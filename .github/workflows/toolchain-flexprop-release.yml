@@ -44,8 +44,12 @@ jobs:
             \"parallax\",
             \"propeller\"
           ],
-          \"homepage\": \"https://github.com/totalspectrum/spin2cpp/",
-          \"license\": \"GPL-2.0-or-later\"
+          \"homepage\": \"https://github.com/totalspectrum/spin2cpp\",
+          \"license\": \"GPL-2.0-or-later\",
+          \"repository\": {
+            \"type\": \"git\",
+            \"url\": \"https://github.com/rileymccarthy/toolchain-flexprop.git\"
+          }
         }
         " > 'package.json'
     # Create build directory
@@ -69,7 +73,7 @@ jobs:
     - name: Archive results
       uses: actions/upload-artifact@v3
       with:
-        name: flexcc-${{ github.event.inputs.branch }}-${{ runner.os }}-${{ runner.arch }}.zip
+        name: flexprop-${{ github.event.inputs.branch }}-${{ runner.os }}-${{ runner.arch }}.zip
         path: 'release/flexprop-${{ github.event.inputs.branch }}-${{ runner.os }}-${{ runner.arch }}.zip'
   create-release:
     needs: build-multiplatform
