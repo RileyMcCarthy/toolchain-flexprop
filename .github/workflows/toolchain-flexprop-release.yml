@@ -77,7 +77,7 @@ jobs:
         path: 'release/flexprop-${{ github.event.inputs.branch }}-${{ runner.os }}-${{ runner.arch }}.zip'
   create-release:
     needs: build-multiplatform
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - name: Create artifact dir
       run: mkdir -p ./artifacts
