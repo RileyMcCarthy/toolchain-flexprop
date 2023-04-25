@@ -42,12 +42,12 @@ jobs:
         msys2 -c 'cp build/flexcc tools/flexcc.exe'
         msys2 -c 'cp build/flexspin tools/flexspin.exe'
         msys2 -c 'cp build/spin2cpp tools/spin2cpp.exe'
-        msys2 -c 'cp build/spin2cpp tools/spin2cpp.exe'
     - if: runner.os == 'Linux'
       run: |
         cp build/flexcc tools/flexcc
         cp build/flexspin tools/flexspin
         cp build/spin2cpp tools/spin2cpp
+        cp -R include tools/include
     - if: runner.os == 'macOS'
       run: |
         cp build/flexcc tools/flexcc.mac
@@ -63,7 +63,6 @@ jobs:
     needs: build-multiplatform
     runs-on: ubuntu-latest
     steps:
-    # Checkout spin2cpp repo
     - uses: actions/checkout@v3
       with:
         submodules: recursive
@@ -99,8 +98,7 @@ jobs:
     - name: Create release directory and copy required files
       run: |
         mkdir 'bin'
-        cp package.json .
-        cp -R include .
+        cp -R artifacts/tools-Linux/include include
         cp artifacts/tools-Windows/flexcc.exe ./bin
         cp artifacts/tools-Windows/flexspin.exe ./bin
         cp artifacts/tools-Windows/spin2cpp.exe ./bin
@@ -110,6 +108,7 @@ jobs:
         cp artifacts/tools-macOS/flexcc.mac ./bin
         cp artifacts/tools-macOS/flexspin.mac ./bin
         cp artifacts/tools-macOS/spin2cpp.mac ./bin
+        rm -R artifacts
     - name: Change permissions
       run: chmod a+rwx ./bin/*
     - name: Push updated package
