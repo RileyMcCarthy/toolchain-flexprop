@@ -115,6 +115,9 @@ jobs:
       run: |
         git config --global user.name 'rileymccarthy'
         git config --global user.email 'riley.mccarthy@yahoo.com'
+        git add 'package.json'
+        git add './bin/*'
+        git add './include/*'
         git commit -am "v${{ github.event.inputs.branch }}"
         git push
     - name: Release with Notes
