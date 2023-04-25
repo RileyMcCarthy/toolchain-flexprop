@@ -97,7 +97,7 @@ jobs:
     # Create build directory
     - name: Create release directory and copy required files
       run: |
-        mkdir 'bin'
+        mkdir -p 'bin'
         cp -R artifacts/tools-Linux/include include
         cp artifacts/tools-Windows/flexcc.exe ./bin
         cp artifacts/tools-Windows/flexspin.exe ./bin
