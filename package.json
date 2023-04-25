@@ -1,0 +1,18 @@
+ {
+  "name": "toolchain-flexprop",
+  "version": "5.1.1",
+  "description": "FlexProp toolchain for parallax devices",
+  "keywords": [
+    "toolchain",
+    "build tools",
+    "compiler",
+    "assembler",
+    "linker",
+    "preprocessor",
+    "microchip",
+    "parallax",
+    "propeller"
+  ],
+  "homepage": "https://github.com/totalspectrum/spin2cpp",
+  "license": "GPL-2.0-or-later"
+} 
