@@ -2,6 +2,30 @@
 
 #pragma once
 
+#if defined(__P1__) && defined(__OUTPUT_BYTECODE__)
+// (enabled only for bytecode output, even though it's buggy, because
+//  printf there doesn't work right without it)
+
+// disabled for now, the __FEATURE_COMPLEXIO__ detection doesn't work correctly
+// on functions pulled in by symbol resolution
+// so the user will have to define _SIMPLE_IO explicitly
+#if defined(__FEATURE_COMPLEXIO__) && !defined(_SIMPLE_IO)
+//#error "complexio" // debug
+#else
+#define _SIMPLE_IO
+#endif
+#endif
+
+#ifndef _COMPLEXIO
+#ifdef __FLEXC__
+#define _COMPLEXIO __attribute__((complexio))
+#define _STRINGIO  __attribute__((complexio))
+#else
+#define _COMPLEXIO
+#define _STRINGIO
+#endif
+#endif
+
 #ifdef SMALL_INT
 #define UITYPE uint32_t
 #define ITYPE  int32_t
@@ -13,11 +37,16 @@
 #endif
 #define BITCOUNT (8*sizeof(UITYPE))
 
+#if defined(_SIMPLE_IO)
+#define PUTC(fn, c) (_tx(c), 1)
+#else
+#define PUTC(fn, c) (*fn)(c)
+#endif
+
 //
 // string formatting functions
 //
 typedef int (*putfunc)(int c);
-#define CALL(fn, c) (*fn)(c)
 
 //
 // flags:

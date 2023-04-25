@@ -19,19 +19,24 @@ extern "C" {
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
-    double atof(const char *);
+    double atof(const char *) _IMPL("libc/stdlib/atof.c");
     int    atoi(const char *) _IMPL("libc/stdlib/atoi.c");
     long   atol(const char *) _IMPL("libc/stdlib/atoi.c");
     long long atoll(const char *);
 
-  long double strtold(const char *nptr, char **endptr);
-  double strtod(const char *nptr, char **endptr);
-  float  strtof(const char *nptr, char **endptr);
+    long double strtold(const char *nptr, char **endptr);
+#ifdef __FLEXC__
+    /* for now only 32 bit doubles are supported in FlexC */
+# define strtod(nptr, endptr) strtof(nptr, endptr)
+#else
+    double strtod(const char *nptr, char **endptr) _IMPL("libc/stdlib/strtod.c");
+#endif
+    float  strtof(const char *nptr, char **endptr) _IMPL("libc/stdlib/strtof.c");
 
     long strtol(const char *nptr, char **endptr, int base) _IMPL("libc/stdlib/strtol.c");
     unsigned long strtoul(const char *nptr, char **endptr, int base) _IMPL("libc/stdlib/strtoul.c");
-  long long strtoll(const char *nptr, char **endptr, int base);
-  unsigned long long strtoull(const char *nptr, char **endptr, int base);
+    long long strtoll(const char *nptr, char **endptr, int base);
+    unsigned long long strtoull(const char *nptr, char **endptr, int base);
 
 #define RAND_MAX    0x3fffffff
     int rand(void) _IMPL("libc/stdlib/rand.c");
@@ -42,6 +47,7 @@ extern "C" {
     void *realloc(void *, size_t) _IMPL("libc/stdlib/malloc.c");
     void free(void *) _IMPL("libc/stdlib/malloc.c");
 
+#define ATEXIT_MAX (32)
     int atexit(void (*func)(void)) _IMPL("libc/stdlib/exit.c");
     _NORETURN void exit(int status) _IMPL("libc/stdlib/exit.c");
     _NORETURN void abort(void) _IMPL("libc/stdlib/abort.c");
@@ -79,7 +85,7 @@ extern "C" {
 		int (*compare)(const void *, const void *));
 
     char *getenv(const char *name) _IMPL("libc/stdlib/getenv.c");
-    int putenv(const char *name) _IMPL("libc/stdlib/getenv.c");
+    int putenv(const char *name) _IMPL("libc/stdlib/putenv.c");
 
   /* multibyte character functions */
   extern int _mb_cur_max;

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#ifndef __FLEXC__
 /*
  * special cog register names (the actual types are compiler dependent)
  * Not all compilers will necessarily support these
@@ -24,6 +25,8 @@ extern volatile uint32_t _OUTA;
 extern volatile uint32_t _OUTB;
 extern volatile uint32_t _INA;
 extern volatile uint32_t _INB;
+
+#endif
 
 #ifdef _PROP1_COMPATIBLE
 /*
@@ -100,14 +103,16 @@ int       _coginit(int cog, void *pgm, void *ptr);
 
 /* start C code in another COG */
 #ifdef __FLEXC__
-#define _cogstart(func, arg, stack, size) __builtin_cogstart(func(arg), stack)
+#define _cogstart_cog(cognum, func, arg, stack, size) __builtin_cogstart_cog(cognum, func(arg), stack)
+#define _cogstart(func, arg, stack, size)             __builtin_cogstart(func(arg), stack)
 #else
 int _cogstart(void (*func)(void *), void *arg, void *stack_base, uint32_t stack_size);
 #endif
 
-// alias used by Catalina
+// aliases used by Catalina
 #define _cogstart_PASM(cogid, pgm, arg)     _coginit(cogid, pgm, arg)
 #define _cogstart_C(func, arg, stack, size) _cogstart(func, arg, stack, size)
+#define _cogstart_C_cog(func, arg, stack, size, cog) _cogstart_cog(cog, func, arg, stack, size)
 
 /* stop/check status of COGs */
 void      _cogstop(int cog);
@@ -134,6 +139,7 @@ polar_t     _xypol(cartesian_t coord);
 uint32_t  _rnd(void);
 //uint32_t  _rev(uint32_t val);   /* like Spin reverse operator */
 #define _rev(val) __builtin_propeller_rev((unsigned)val)
+int       _clz(uint32_t val);   /* count leading zeros */
 int       _encod(uint32_t val); /* Spin encode operator */
 uint32_t  _isqrt(uint32_t val); /* Spin integer square root */
 
@@ -149,6 +155,7 @@ uint32_t  _pollcnt(uint32_t tick);
 void      _waitcnt(uint32_t tick);
 
 void      _waitx(uint32_t cycles);
+void      _waitsec(uint32_t seconds);
 void	  _waitms(uint32_t milliseconds);
 void	  _waitus(uint32_t microseconds);
 

@@ -19,6 +19,12 @@
 
 #pragma once
 
+#if defined(__FLEXC__)
+#define __ORDER_LITTLE_ENDIAN__   1
+#define __ORDER_BIG_ENDIAN__      2
+#define __BYTE_ORDER__            __ORDER_LITTLE_ENDIAN__
+#endif
+
 #if defined(__GNUC__)
 #define _INT_SIZE  __SIZEOF_INT__
 #define _LONG_SIZE __SIZEOF_LONG__
@@ -104,6 +110,16 @@
 
 #ifndef _IMPL
 #define _IMPL(x)
+#endif
+
+#ifndef _COMPLEXIO
+#ifdef __FLEXC__
+#define _COMPLEXIO __attribute__((complexio))
+#define _STRINGIO  __attribute__((complexio))
+#else
+#define _COMPLEXIO
+#define _STRINGIO
+#endif
 #endif
 
 #endif
