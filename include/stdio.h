@@ -5,6 +5,7 @@
 #include <sys/size_t.h>
 #include <sys/types.h>
 #include <sys/limits.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 
 #ifndef EOF
@@ -13,8 +14,14 @@
 #ifndef NULL
 #define NULL (0)
 #endif
+#ifndef BUFSIZ
+#define BUFSIZ _DEFAULT_BUFSIZ
+#endif
 #ifndef FILENAME_MAX
 #define FILENAME_MAX _PATH_MAX
+#endif
+#ifndef L_tmpnam
+#define L_tmpnam _PATH_MAX
 #endif
 
 typedef vfs_file_t FILE;
@@ -30,11 +37,12 @@ FILE *__getftab(int i) _IMPL("libc/unix/posixio.c");
 #define stdout __getftab(1)
 #define stderr __getftab(2)
 
-#define putc(x, f) (((f)->putcf)( (x), (f) ))
-#define getc(f)    (((f)->getcf)( (f) ))
-
 int fputc(int c, FILE *f) _IMPL("libc/stdio/fputs.c");
 int fgetc(FILE *f) _IMPL("libc/stdio/fputs.c");
+int ungetc(int c, FILE *f) _IMPL("libc/stdio/fputs.c");
+
+#define putc(x, f) fputc( (x), (f) )
+#define getc(f)    fgetc( (f) )
 
 #define putchar(x) fputc( (x), stdout)
 #define getchar() fgetc(stdin)

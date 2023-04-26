@@ -7,20 +7,14 @@
 #include <errno.h>
 
 #define INCLUDE_FLOATS
-#undef SIMPLE_IO
+#undef _SIMPLE_IO
 
 #ifdef __FLEXC__
-
-#if defined(__FEATURE_COMPLEXIO__) && !defined(SIMPLE_IO)
-//#error "complexio" // debug
-#else
-#define SIMPLE_IO
-#endif
 
 #define SMALL_INT
 #define strlen __builtin_strlen
 #define strcpy __builtin_strcpy
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
 #define THROW_RETURN(err) return -1
 #else
 #define THROW_RETURN(x) do { __throwifcaught(x); return -1; } while (0)
@@ -41,12 +35,6 @@
 #define DEFAULT_PREC 6
 #define DEFAULT_BASIC_FLOAT_FMT ((1<<UPCASE_BIT)|((4+1)<<PREC_BIT))
 #define DEFAULT_FLOAT_FMT ((1<<UPCASE_BIT))
-
-#ifdef SIMPLE_IO
-#define PUTC(c) (_tx(c), 1)
-#else
-#define PUTC(c) (*fn)(c)
-#endif
 
 //
 // reverse a string in-place
@@ -97,7 +85,7 @@ int _fmtpad(putfunc fn, unsigned fmt, int width, unsigned leftright)
         width = (width + (leftright==PAD_ON_RIGHT)) / 2;
     }
     for (i = 0; i < width; i++) {
-        r = PUTC(' ');
+        r = PUTC(fn, ' ');
         if (r < 0) return r;
         n += r;
     }
@@ -117,7 +105,7 @@ int _fmtstr(putfunc fn, unsigned fmt, const char *str)
     n = _fmtpad(fn, fmt, width, PAD_ON_LEFT);
     if (n < 0) return n;
     for (i = 0; i < width; i++) {
-        r = PUTC(*str++);
+        r = PUTC(fn, *str++);
         if (r < 0) return r;
         n += r;
     }
@@ -129,10 +117,8 @@ int _fmtstr(putfunc fn, unsigned fmt, const char *str)
 
 int _fmtchar(putfunc fn, unsigned fmt, int c)
 {
-    char buf[2];
-    buf[0] = c;
-    buf[1] = 0;
-    return _fmtstr(fn, fmt, buf);
+    c &= 255;
+    return _fmtstr(fn, fmt, (char*)&c);
 }
 
 #ifdef SMALL_INT
@@ -149,12 +135,15 @@ int _uitoall(char *orig_str, unsigned long long num, unsigned base, unsigned min
         letterdigit = 'a' - 10;
     }
     do {
-        digit = num % base;
+        digit = num % base;        
         if (digit < 10) {
             digit += '0';
         } else {
             digit += letterdigit;
         }
+#ifdef _DEBUG_PRINTF
+        __builtin_printf("uitoall: num=%x::%x digit=%c\n", (unsigned)(num>>32), (unsigned)(num), digit);
+#endif        
         *str++ = digit;
         num = num / base;
         width++;
@@ -197,7 +186,11 @@ int _uitoa(char *orig_str, UITYPE num, unsigned base, unsigned mindigits, int up
 
 int _fmtnum(putfunc fn, unsigned fmt, int x, int base)
 {
+    #ifdef __OUTPUT_ASM__
+    char *buf = __builtin_alloca(MAX_NUM_DIGITS+1);
+    #else
     char buf[MAX_NUM_DIGITS+1];
+    #endif
     char *ptr = buf;
     int width = 0;
     int mindigits = (fmt >> PREC_BIT) & PREC_MASK;
@@ -245,7 +238,11 @@ int _fmtnum(putfunc fn, unsigned fmt, int x, int base)
 
 int _fmtnumlong(putfunc fn, unsigned fmt, long long x, int base)
 {
+    #ifdef __OUTPUT_ASM__
+    char *buf = __builtin_alloca(MAX_NUM_DIGITS+1);
+    #else
     char buf[MAX_NUM_DIGITS+1];
+    #endif
     char *ptr = buf;
     int width = 0;
     int mindigits = (fmt >> PREC_BIT) & PREC_MASK;
@@ -881,10 +878,10 @@ typedef int (*RxFunc)(void);
 typedef int (*CloseFunc)(void);
 typedef int (*VFS_CloseFunc)(vfs_file_t *);
 
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
 #define _gettxfunc(h) ((void *)1)
 #define _getrxfunc(h) ((void *)1)
-# ifdef __FEATURE_MULTICOG__
+# if defined(__FEATURE_MULTICOG__) && !defined(_NO_LOCKIO)
 static int __iolock;
 int __lockio(int h)   { _lockmem(&__iolock); return 0; }
 int __unlockio(int h) { _unlockmem(&__iolock); return 0; }
@@ -902,8 +899,10 @@ int __unlockio(int h) { return 0; }
 typedef struct _bas_wrap_sender {
     TxFunc ftx;
     RxFunc frx;
+    CloseFunc fclose;
     int tx(int c, void *arg) { ftx(c); return 1; }
     int rx(void *arg) { return frx(); }
+    int close(void *arg) { return fclose(); }
 } BasicWrapper;
 
 TxFunc _gettxfunc(unsigned h) {
@@ -926,10 +925,16 @@ static int *_getiolock(unsigned h) {
     return &v->lock;
 }
 int __lockio(unsigned h) {
-    _lockmem(_getiolock(h)); return 0;
+#ifndef _NO_LOCKIO    
+    _lockmem(_getiolock(h));
+#endif    
+    return 0;
 }
 int __unlockio(unsigned h) {
-    _unlockmem(_getiolock(h)); return 0;
+#ifndef _NO_LOCKIO
+    _unlockmem(_getiolock(h));
+#endif
+    return 0;
 }
 
 #endif
@@ -940,7 +945,7 @@ int __unlockio(unsigned h) {
 
 int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
 {
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
     THROW_RETURN(EIO);
 #else    
     struct _bas_wrap_sender *wrapper = 0;
@@ -954,7 +959,7 @@ int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
     if (v->state) {
         _closeraw(v);
     }
-    if (sendf || recvf) {
+    if (sendf || recvf || closef) {
         wrapper = _gc_alloc_managed(sizeof(BasicWrapper));
         if (!wrapper) {
             THROW_RETURN(ENOMEM); /* out of memory */
@@ -963,29 +968,31 @@ int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
         wrapper->frx = 0;
     }
     if (sendf) {
-        wrapper = _gc_alloc_managed(sizeof(BasicWrapper));
-        if (!wrapper) {
-            THROW_RETURN(ENOMEM); /* out of memory */
-        }
         wrapper->ftx = sendf;
         v->putcf = (putcfunc_t)&wrapper->tx;
     } else {
         v->putcf = 0;
     }
-    v->state = _VFS_STATE_INUSE|_VFS_STATE_RDOK|_VFS_STATE_WROK;
     if (recvf) {
+        wrapper->frx = recvf;
         v->getcf = &wrapper->rx;
     } else {
         v->getcf = 0;
     }
-    v->close = (VFS_CloseFunc)closef;
+    if (closef) {
+        wrapper->fclose = closef;
+        v->close = (VFS_CloseFunc)&wrapper->close;
+    } else {
+        v->close = 0;
+    }
+    v->state = _VFS_STATE_INUSE|_VFS_STATE_RDOK|_VFS_STATE_WROK;
     return 0;
 #endif    
 }
 
 int _basic_open_string(unsigned h, char *fname, unsigned iomode)
 {
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
     THROW_RETURN(EIO);
 #else    
     vfs_file_t *v;
@@ -1015,7 +1022,7 @@ int _basic_print_char(unsigned h, int c, unsigned fmt)
 {
     TxFunc fn = _gettxfunc(h);
     if (!fn) return 0;
-    PUTC(c);
+    PUTC(fn, c);
     return 1;
 }
 
@@ -1159,7 +1166,7 @@ int _basic_print_longinteger(unsigned h, long long int x, unsigned fmt, int base
 
 int _basic_get_char(unsigned h)
 {
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
     return _rx();
 #else    
     RxFunc rf;
