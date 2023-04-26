@@ -47,6 +47,9 @@ struct s_vfs_file_t {
     void *vfsdata;
     unsigned flags; /* O_XXX for rdwr mode and such */
     unsigned state; /* flags for EOF and the like */
+    int      lock;  /* lock for multiple I/O */
+    int      ungot;
+
     ssize_t (*read)(vfs_file_t *fil, void *buf, size_t count);
     ssize_t (*write)(vfs_file_t *fil, const void *buf, size_t count);
     int (*putcf)(int c, vfs_file_t *fil);
@@ -57,15 +60,8 @@ struct s_vfs_file_t {
     off_t (*lseek)(vfs_file_t *fil, off_t offset, int whence);
     
     /* internal functions for formatting routines */
-    int putchar(int c) {
-        int i;
-        if (!putcf) return 0;
-        i = putcf(c, __this); return (i < 0) ? 0 : 1;
-    }
-    int getchar(void)  {
-        if (!getcf) return -1;
-        return getcf(__this);
-    }
+    int putchar(int c) __fromfile("libsys/vfs.c");
+    int getchar(void)  __fromfile("libsys/vfs.c");
 };
 
 typedef int (*putcfunc_t)(int c, vfs_file_t *fil);
@@ -78,5 +74,6 @@ typedef int (*getcfunc_t)(vfs_file_t *fil);
 #define _VFS_STATE_ERR (0x20)
 #define _VFS_STATE_APPEND (0x40)
 #define _VFS_STATE_NEEDSEEK (0x80)
+#define _VFS_STATE_ISATTY (0x100)
 
 #endif

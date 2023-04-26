@@ -1,3 +1,8 @@
+//
+// simple test program for 9p access to host files
+// Written by Eric R. Smith, Total Spectrum Software Inc.
+// Released into the public domain.
+//
 #ifndef FS9P_H
 #define FS9P_H
 
@@ -42,7 +47,11 @@ enum {
 // maximum length we're willing to send/receive from host
 // write: 4 + 1 + 2 + 4 + 8 + 4 + 1024 = 1048
 
+#ifdef __P2__
+#define MAXLEN (1048+1024+2048)
+#else
 #define MAXLEN 1048
+#endif
 
 // functions for the 9p file system
 typedef struct fsfile {
