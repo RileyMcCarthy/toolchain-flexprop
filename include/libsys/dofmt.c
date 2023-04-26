@@ -10,7 +10,6 @@
 #else
 #define INCLUDE_FLOATS
 #endif
-#define LONGLONG_SUPPORT
 
 #define va_ptr          va_list *
 #define va_ptrarg(x, t) va_arg(*x, t)
@@ -147,14 +146,12 @@ int _dofmt(putfunc fn, const char *fmtstr, va_list *args)
     unsigned val;
 #ifdef LONGLONG_SUPPORT    
     unsigned long long val_LL;
-    int is_ll;
 #endif    
     for(;;) {
-        is_ll = 0;
         c = *fmtstr++;
         if (!c) break;
         if (c != '%') {
-            q = PUTC(fn, c);
+            q = (*fn)(c);
             if (q < 0) return q;
             bytes_written++;
             continue;
@@ -167,8 +164,6 @@ int _dofmt(putfunc fn, const char *fmtstr, va_list *args)
             fmtstr++;
             prec = parseint(&fmtstr, args) + 1;
             c = *fmtstr; if (c == 0) break;
-        } else {
-            prec = 0;
         }
         fmtstr = parsesize(fmtstr, &size);
         c = *fmtstr++; if (c == 0) break;
@@ -181,8 +176,6 @@ int _dofmt(putfunc fn, const char *fmtstr, va_list *args)
 #ifdef LONGLONG_SUPPORT        
         if (size == 8) {
             val_LL = va_ptrarg(args, unsigned long long);
-            val = val_LL;
-            is_ll = 1;
         }
         else
 #endif            
@@ -223,34 +216,21 @@ int _dofmt(putfunc fn, const char *fmtstr, va_list *args)
             if (prec == 0 && padchar == PADCHAR_ZERO) {
                 flags |= ((width+1)<<PREC_BIT);
             }
-            if (!is_ll) {
-                q = _fmtnum(fn, flags, val, 10);
-            } else {
-                q = _fmtnumlong(fn, flags, val_LL, 10);
-            }
+            q = _fmtnum(fn, flags, val, 10);
             break;
         case 'o':
             flags |= SIGNCHAR_UNSIGNED << SIGNCHAR_BIT;
             if (prec == 0 && padchar == PADCHAR_ZERO) {
                 flags |= ((width+1)<<PREC_BIT);
             }
-            if (!is_ll) {
-                q = _fmtnum(fn, flags, val, 8);
-            } else {
-                q = _fmtnumlong(fn, flags, val_LL, 8);
-            }
+            q = _fmtnum(fn, flags, val, 8);
             break;
         case 'x':
-        case 'p':
             if (prec == 0 && padchar == PADCHAR_ZERO) {
                 flags |= ((width+1)<<PREC_BIT);
             }
             flags |= SIGNCHAR_UNSIGNED << SIGNCHAR_BIT;
-            if (!is_ll) {
-                q = _fmtnum(fn, flags, val, 16);
-            } else {
-                q = _fmtnumlong(fn, flags, val_LL, 16);
-            }
+            q = _fmtnum(fn, flags, val, 16);
             break;
 #ifdef INCLUDE_FLOATS            
         case 'a':

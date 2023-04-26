@@ -103,16 +103,14 @@ int       _coginit(int cog, void *pgm, void *ptr);
 
 /* start C code in another COG */
 #ifdef __FLEXC__
-#define _cogstart_cog(cognum, func, arg, stack, size) __builtin_cogstart_cog(cognum, func(arg), stack)
-#define _cogstart(func, arg, stack, size)             __builtin_cogstart(func(arg), stack)
+#define _cogstart(func, arg, stack, size) __builtin_cogstart(func(arg), stack)
 #else
 int _cogstart(void (*func)(void *), void *arg, void *stack_base, uint32_t stack_size);
 #endif
 
-// aliases used by Catalina
+// alias used by Catalina
 #define _cogstart_PASM(cogid, pgm, arg)     _coginit(cogid, pgm, arg)
 #define _cogstart_C(func, arg, stack, size) _cogstart(func, arg, stack, size)
-#define _cogstart_C_cog(func, arg, stack, size, cog) _cogstart_cog(cog, func, arg, stack, size)
 
 /* stop/check status of COGs */
 void      _cogstop(int cog);

@@ -48,7 +48,6 @@ static vfs_file_t __filetab[_MAX_FILES] = {
         O_RDONLY, /* flags */
         _VFS_STATE_INUSE|_VFS_STATE_RDOK, /* state */
         0, /* lock */
-        0, /* ungot */
         0, /* read */
         0, /* write */
         (putcfunc_t)&_txputc, /* putc */
@@ -63,7 +62,6 @@ static vfs_file_t __filetab[_MAX_FILES] = {
         O_WRONLY, /* flags */
         _VFS_STATE_INUSE|_VFS_STATE_WROK,
         0, /* lock */
-        0, /* ungot */
         0, /* read */
         0, /* write */
         (putcfunc_t)&_txputc, /* putchar */
@@ -78,7 +76,6 @@ static vfs_file_t __filetab[_MAX_FILES] = {
         O_WRONLY, /* flags */
         _VFS_STATE_INUSE|_VFS_STATE_WROK,
         0, /* lock */
-        0, /* ungot */
         0, /* read */
         0, /* write */
         (putcfunc_t)&_txputc, /* putchar */

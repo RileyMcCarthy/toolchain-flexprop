@@ -352,6 +352,3 @@ int __indst(const struct tm *t)
 struct tm *gmtime_r(const time_t *t, struct tm *stm) __attribute__((weak,alias("_gmtime_r")));
 struct tm *localtime_r(const time_t *t, struct tm *stm) __attribute__((weak,alias("_localtime_r")));
 #endif
-
-/* utility function */
-int _gettimezone() { return _timezone; }
