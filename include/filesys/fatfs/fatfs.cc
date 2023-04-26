@@ -26,8 +26,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-unsigned long long f_pinmask;
-
 unsigned int _get_fattime()
 {
     time_t now;
@@ -433,11 +431,9 @@ int v_init(const char *mountname)
 int v_deinit(const char *mountname)
 {
     int r = f_mount(0, "", 0);
-    
 #if defined(_DEBUG_FATFS) && defined(__FLEXC__)
     __builtin_printf("  deinit: f_mount returned %d\n", r);
-#endif
-    _freepins(f_pinmask);
+#endif                        
     return 0;
 }
 

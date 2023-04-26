@@ -2,18 +2,10 @@
 
 #pragma once
 
-#if defined(__P1__) && defined(__OUTPUT_BYTECODE__)
-// (enabled only for bytecode output, even though it's buggy, because
-//  printf there doesn't work right without it)
-
-// disabled for now, the __FEATURE_COMPLEXIO__ detection doesn't work correctly
-// on functions pulled in by symbol resolution
-// so the user will have to define _SIMPLE_IO explicitly
-#if defined(__FEATURE_COMPLEXIO__) && !defined(_SIMPLE_IO)
+#if defined(__FEATURE_COMPLEXIO__) && !defined(SIMPLE_IO)
 //#error "complexio" // debug
 #else
-#define _SIMPLE_IO
-#endif
+#define SIMPLE_IO
 #endif
 
 #ifndef _COMPLEXIO
@@ -37,7 +29,7 @@
 #endif
 #define BITCOUNT (8*sizeof(UITYPE))
 
-#if defined(_SIMPLE_IO)
+#ifdef SIMPLE_IO
 #define PUTC(fn, c) (_tx(c), 1)
 #else
 #define PUTC(fn, c) (*fn)(c)

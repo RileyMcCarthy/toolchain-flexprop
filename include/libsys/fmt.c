@@ -7,14 +7,14 @@
 #include <errno.h>
 
 #define INCLUDE_FLOATS
-#undef _SIMPLE_IO
+#undef SIMPLE_IO
 
 #ifdef __FLEXC__
 
 #define SMALL_INT
 #define strlen __builtin_strlen
 #define strcpy __builtin_strcpy
-#ifdef _SIMPLE_IO
+#ifdef SIMPLE_IO
 #define THROW_RETURN(err) return -1
 #else
 #define THROW_RETURN(x) do { __throwifcaught(x); return -1; } while (0)
@@ -878,10 +878,10 @@ typedef int (*RxFunc)(void);
 typedef int (*CloseFunc)(void);
 typedef int (*VFS_CloseFunc)(vfs_file_t *);
 
-#ifdef _SIMPLE_IO
+#ifdef SIMPLE_IO
 #define _gettxfunc(h) ((void *)1)
 #define _getrxfunc(h) ((void *)1)
-# if defined(__FEATURE_MULTICOG__) && !defined(_NO_LOCKIO)
+# ifdef __FEATURE_MULTICOG__
 static int __iolock;
 int __lockio(int h)   { _lockmem(&__iolock); return 0; }
 int __unlockio(int h) { _unlockmem(&__iolock); return 0; }
@@ -925,16 +925,10 @@ static int *_getiolock(unsigned h) {
     return &v->lock;
 }
 int __lockio(unsigned h) {
-#ifndef _NO_LOCKIO    
-    _lockmem(_getiolock(h));
-#endif    
-    return 0;
+    _lockmem(_getiolock(h)); return 0;
 }
 int __unlockio(unsigned h) {
-#ifndef _NO_LOCKIO
-    _unlockmem(_getiolock(h));
-#endif
-    return 0;
+    _unlockmem(_getiolock(h)); return 0;
 }
 
 #endif
@@ -945,7 +939,7 @@ int __unlockio(unsigned h) {
 
 int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
 {
-#ifdef _SIMPLE_IO
+#ifdef SIMPLE_IO
     THROW_RETURN(EIO);
 #else    
     struct _bas_wrap_sender *wrapper = 0;
@@ -992,7 +986,7 @@ int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
 
 int _basic_open_string(unsigned h, char *fname, unsigned iomode)
 {
-#ifdef _SIMPLE_IO
+#ifdef SIMPLE_IO
     THROW_RETURN(EIO);
 #else    
     vfs_file_t *v;
@@ -1166,7 +1160,7 @@ int _basic_print_longinteger(unsigned h, long long int x, unsigned fmt, int base
 
 int _basic_get_char(unsigned h)
 {
-#ifdef _SIMPLE_IO
+#ifdef SIMPLE_IO
     return _rx();
 #else    
     RxFunc rf;
