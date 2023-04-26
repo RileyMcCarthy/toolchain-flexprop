@@ -1,6 +1,6 @@
  {
   "name": "toolchain-flexprop",
-  "version": "5.9.12",
+  "version": "5.9.19",
   "description": "FlexProp toolchain for parallax devices",
   "keywords": [
     "toolchain",

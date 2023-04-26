@@ -11,12 +11,6 @@
 
 #ifdef __FLEXC__
 
-#if defined(__FEATURE_COMPLEXIO__) && !defined(SIMPLE_IO)
-//#error "complexio" // debug
-#else
-#define SIMPLE_IO
-#endif
-
 #define SMALL_INT
 #define strlen __builtin_strlen
 #define strcpy __builtin_strcpy
@@ -41,12 +35,6 @@
 #define DEFAULT_PREC 6
 #define DEFAULT_BASIC_FLOAT_FMT ((1<<UPCASE_BIT)|((4+1)<<PREC_BIT))
 #define DEFAULT_FLOAT_FMT ((1<<UPCASE_BIT))
-
-#ifdef SIMPLE_IO
-#define PUTC(c) (_tx(c), 1)
-#else
-#define PUTC(c) (*fn)(c)
-#endif
 
 //
 // reverse a string in-place
@@ -97,7 +85,7 @@ int _fmtpad(putfunc fn, unsigned fmt, int width, unsigned leftright)
         width = (width + (leftright==PAD_ON_RIGHT)) / 2;
     }
     for (i = 0; i < width; i++) {
-        r = PUTC(' ');
+        r = PUTC(fn, ' ');
         if (r < 0) return r;
         n += r;
     }
@@ -117,7 +105,7 @@ int _fmtstr(putfunc fn, unsigned fmt, const char *str)
     n = _fmtpad(fn, fmt, width, PAD_ON_LEFT);
     if (n < 0) return n;
     for (i = 0; i < width; i++) {
-        r = PUTC(*str++);
+        r = PUTC(fn, *str++);
         if (r < 0) return r;
         n += r;
     }
@@ -149,12 +137,15 @@ int _uitoall(char *orig_str, unsigned long long num, unsigned base, unsigned min
         letterdigit = 'a' - 10;
     }
     do {
-        digit = num % base;
+        digit = num % base;        
         if (digit < 10) {
             digit += '0';
         } else {
             digit += letterdigit;
         }
+#ifdef _DEBUG_PRINTF
+        __builtin_printf("uitoall: num=%x::%x digit=%c\n", (unsigned)(num>>32), (unsigned)(num), digit);
+#endif        
         *str++ = digit;
         num = num / base;
         width++;
@@ -902,8 +893,10 @@ int __unlockio(int h) { return 0; }
 typedef struct _bas_wrap_sender {
     TxFunc ftx;
     RxFunc frx;
+    CloseFunc fclose;
     int tx(int c, void *arg) { ftx(c); return 1; }
     int rx(void *arg) { return frx(); }
+    int close(void *arg) { return fclose(); }
 } BasicWrapper;
 
 TxFunc _gettxfunc(unsigned h) {
@@ -954,7 +947,7 @@ int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
     if (v->state) {
         _closeraw(v);
     }
-    if (sendf || recvf) {
+    if (sendf || recvf || closef) {
         wrapper = _gc_alloc_managed(sizeof(BasicWrapper));
         if (!wrapper) {
             THROW_RETURN(ENOMEM); /* out of memory */
@@ -963,22 +956,24 @@ int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
         wrapper->frx = 0;
     }
     if (sendf) {
-        wrapper = _gc_alloc_managed(sizeof(BasicWrapper));
-        if (!wrapper) {
-            THROW_RETURN(ENOMEM); /* out of memory */
-        }
         wrapper->ftx = sendf;
         v->putcf = (putcfunc_t)&wrapper->tx;
     } else {
         v->putcf = 0;
     }
-    v->state = _VFS_STATE_INUSE|_VFS_STATE_RDOK|_VFS_STATE_WROK;
     if (recvf) {
+        wrapper->frx = recvf;
         v->getcf = &wrapper->rx;
     } else {
         v->getcf = 0;
     }
-    v->close = (VFS_CloseFunc)closef;
+    if (closef) {
+        wrapper->fclose = closef;
+        v->close = (VFS_CloseFunc)&wrapper->close;
+    } else {
+        v->close = 0;
+    }
+    v->state = _VFS_STATE_INUSE|_VFS_STATE_RDOK|_VFS_STATE_WROK;
     return 0;
 #endif    
 }
@@ -1015,7 +1010,7 @@ int _basic_print_char(unsigned h, int c, unsigned fmt)
 {
     TxFunc fn = _gettxfunc(h);
     if (!fn) return 0;
-    PUTC(c);
+    PUTC(fn, c);
     return 1;
 }
 
