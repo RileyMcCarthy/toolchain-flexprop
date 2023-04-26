@@ -117,8 +117,10 @@ int _fmtstr(putfunc fn, unsigned fmt, const char *str)
 
 int _fmtchar(putfunc fn, unsigned fmt, int c)
 {
-    c &= 255;
-    return _fmtstr(fn, fmt, (char*)&c);
+    char buf[2];
+    buf[0] = c;
+    buf[1] = 0;
+    return _fmtstr(fn, fmt, buf);
 }
 
 #ifdef SMALL_INT
@@ -186,11 +188,7 @@ int _uitoa(char *orig_str, UITYPE num, unsigned base, unsigned mindigits, int up
 
 int _fmtnum(putfunc fn, unsigned fmt, int x, int base)
 {
-    #ifdef __OUTPUT_ASM__
-    char *buf = __builtin_alloca(MAX_NUM_DIGITS+1);
-    #else
     char buf[MAX_NUM_DIGITS+1];
-    #endif
     char *ptr = buf;
     int width = 0;
     int mindigits = (fmt >> PREC_BIT) & PREC_MASK;
@@ -238,11 +236,7 @@ int _fmtnum(putfunc fn, unsigned fmt, int x, int base)
 
 int _fmtnumlong(putfunc fn, unsigned fmt, long long x, int base)
 {
-    #ifdef __OUTPUT_ASM__
-    char *buf = __builtin_alloca(MAX_NUM_DIGITS+1);
-    #else
     char buf[MAX_NUM_DIGITS+1];
-    #endif
     char *ptr = buf;
     int width = 0;
     int mindigits = (fmt >> PREC_BIT) & PREC_MASK;
