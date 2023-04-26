@@ -186,7 +186,7 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
 			    int hh, mm;
 			    char c='+';
 			    _tzset();
-			    hh = -_gettimezone();
+			    hh = -_timezone;
 			    if (hh < 0) {
 			      c = '-';
 			      hh = -hh;

@@ -44,10 +44,10 @@
 #error PIN_SS definition no longer supported, use _vfs_open_sdcardx instead
 #endif
 
-int _pin_clk;
-int _pin_ss;
-int _pin_di;
-int _pin_do;
+static int _pin_clk = 0;
+static int _pin_ss = 0;
+static int _pin_di = 0;
+static int _pin_do = 0;
 
 #ifdef __propeller2__
 #define _smartpins_mode_eh /* enable Evanh's fast smartpin code */
@@ -120,8 +120,11 @@ void dly_us (UINT n)	/* Delay n microseconds (avr-gcc -Os) */
 #define CMD55	(55)		/* APP_CMD */
 #define CMD58	(58)		/* READ_OCR */
 
-DSTATUS Stat /*= STA_NOINIT*/;	/* Disk status */
 
+static
+DSTATUS Stat = STA_NOINIT;	/* Disk status */
+
+static
 BYTE CardType;			/* b0:MMC, b1:SDv1, b2:SDv2, b3:Block addressing */
 
 
@@ -518,15 +521,12 @@ DSTATUS disk_initialize (
 	int PIN_CLK = _pin_clk;
 	int PIN_DI = _pin_di;
 	int PIN_DO = _pin_do;
-
-        Stat = STA_NOINIT;
-        
-#ifdef _DEBUG_SDMM
-        __builtin_printf("disk_initialize: PINS=%d %d %d %d\n", PIN_SS, PIN_CLK, PIN_DI, PIN_DO);
+#ifdef _DEBUG	
+        printf("disk_initialize\n");
 #endif	
 	if (drv) {
-#ifdef _DEBUG_SDMM
-            __builtin_printf("bad drv %d\n", drv);
+#ifdef _DEBUG	  
+            printf("bad drv %d\n", drv);
 #endif	    
             return RES_NOTRDY;
         }
@@ -572,8 +572,8 @@ DSTATUS disk_initialize (
 
 	ty = 0;
 	if (send_cmd(CMD0, 0) == 1) {			/* Enter Idle state */
-#ifdef _DEBUG_SDMM
-            __builtin_printf("idle OK\n");
+#ifdef _DEBUG	  
+            printf("idle OK\n");
 #endif	    
 		if (send_cmd(CMD8, 0x1AA) == 1) {	/* SDv2? */
 			rcvr_mmc(buf, 4);							/* Get trailing return value of R7 resp */
@@ -625,8 +625,8 @@ DSTATUS disk_initialize (
 #endif
 		}
 	}
-#ifdef _DEBUG_SDMM
-        __builtin_printf("ty = %d\n", ty);
+#ifdef _DEBUG	
+        printf("ty = %d\n", ty);
 #endif	
 	CardType = ty;
 	s = ty ? 0 : STA_NOINIT;
@@ -637,8 +637,8 @@ DSTATUS disk_initialize (
 #ifdef _smartpins_mode_eh
 	_wxpin( PIN_CLK, ck_div );
 	_wrpin( PIN_DI, spm_tx );
-  #ifdef _DEBUG_SDMM
-	__builtin_printf( "SPI clock ratio = sysclock/%d\n", ck_div & 0xffff );
+  #ifdef _DEBUG
+	printf( "SPI clock ratio = sysclock/%d\n", ck_div & 0xffff );
   #endif
 #endif
 	return s;
@@ -660,9 +660,6 @@ DRESULT disk_read (
 	BYTE cmd;
 	DWORD sect = (DWORD)sector;
 
-#ifdef _DEBUG
-        __builtin_printf("disk_read: PINS=%d %d %d %d\n", _pin_ss, _pin_clk, _pin_di, _pin_do);
-#endif	
 
 	if (disk_status(drv) & STA_NOINIT) return RES_NOTRDY;
 	if (!(CardType & CT_BLOCK)) sect *= 512;	/* Convert LBA to byte address if needed */
@@ -778,7 +775,4 @@ DRESULT disk_setpins(int drv, int pclk, int pss, int pdi, int pdo)
     _pin_ss  = pss;
     _pin_di = pdi;
     _pin_do = pdo;
-#ifdef _DEBUG
-    __builtin_printf("&_pin_clk=%x, _pin_clk = %d\n", (unsigned)&_pin_clk, _pin_clk);
-#endif    
 }

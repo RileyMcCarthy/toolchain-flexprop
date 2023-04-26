@@ -8,12 +8,10 @@
 
 #define DIR FFDIR
 #define get_fattime _get_fattime
-#define static
 
 #include "ffunicode.c"
 #include "ff.c"
 #undef DIR
-#undef static
 
 /////////////////////////////////////////////////////////////////////////
 // FlexC virtual file system glue code
@@ -109,7 +107,7 @@ static int _set_dos_error(int derr)
     return _seterror(r);
 }
 
-int v_creat(vfs_file_t *fil, const char *pathname, mode_t mode)
+static int v_creat(vfs_file_t *fil, const char *pathname, mode_t mode)
 {
   int r;
   FAT_FIL *f = malloc(sizeof(*f));
@@ -132,7 +130,7 @@ int v_creat(vfs_file_t *fil, const char *pathname, mode_t mode)
   return 0;
 }
 
-int v_close(vfs_file_t *fil)
+static int v_close(vfs_file_t *fil)
 {
     int r;
     FAT_FIL *f = fil->vfsdata;
@@ -141,13 +139,13 @@ int v_close(vfs_file_t *fil)
     return _set_dos_error(r);
 }
 
-int v_opendir(DIR *dir, const char *name)
+static int v_opendir(DIR *dir, const char *name)
 {
     FFDIR *f = malloc(sizeof(*f));
     int r;
 
 #ifdef _DEBUG_FATFS    
-    __builtin_printf("v_opendir(%s) this=%x\n", name, __this);
+    __builtin_printf("v_opendir(%s)\n", name);
 #endif    
     if (!f) {
 #ifdef _DEBUG_FATFS
@@ -168,7 +166,7 @@ int v_opendir(DIR *dir, const char *name)
     return 0;
 }
 
-int v_closedir(DIR *dir)
+static int v_closedir(DIR *dir)
 {
     int r;
     FFDIR *f = dir->vfsdata;
@@ -178,7 +176,7 @@ int v_closedir(DIR *dir)
     return r;
 }
 
-int v_readdir(DIR *dir, struct dirent *ent)
+static int v_readdir(DIR *dir, struct dirent *ent)
 {
     FILINFO finfo;
     int r;
@@ -209,7 +207,7 @@ int v_readdir(DIR *dir, struct dirent *ent)
     return 0;
 }
 
-int v_stat(const char *name, struct stat *buf)
+static int v_stat(const char *name, struct stat *buf)
 {
     int r;
     FILINFO finfo;
@@ -247,7 +245,7 @@ int v_stat(const char *name, struct stat *buf)
     return r;
 }
 
-ssize_t v_read(vfs_file_t *fil, void *buf, size_t siz)
+static ssize_t v_read(vfs_file_t *fil, void *buf, size_t siz)
 {
     FAT_FIL *f = fil->vfsdata;
     int r;
@@ -272,7 +270,7 @@ ssize_t v_read(vfs_file_t *fil, void *buf, size_t siz)
     }
     return x;
 }
-ssize_t v_write(vfs_file_t *fil, void *buf, size_t siz)
+static ssize_t v_write(vfs_file_t *fil, void *buf, size_t siz)
 {
     FAT_FIL *f = fil->vfsdata;
     int r;
@@ -280,9 +278,6 @@ ssize_t v_write(vfs_file_t *fil, void *buf, size_t siz)
     if (!f) {
         return _seterror(EBADF);
     }
-#if FF_FS_READONLY
-    return _seterror(EACCES);
-#else
 #ifdef _DEBUG_FATFS    
     __builtin_printf("v_write: f_write %d bytes:", siz);
 #endif    
@@ -295,9 +290,8 @@ ssize_t v_write(vfs_file_t *fil, void *buf, size_t siz)
         return _set_dos_error(r);
     }
     return x;
-#endif
 }
-off_t v_lseek(vfs_file_t *fil, off_t offset, int whence)
+static off_t v_lseek(vfs_file_t *fil, off_t offset, int whence)
 {
     FAT_FIL *vf = fil->vfsdata;
     FIL *f = &vf->fil;
@@ -333,51 +327,35 @@ int v_ioctl(vfs_file_t *fil, unsigned long req, void *argp)
 
 int v_mkdir(const char *name, mode_t mode)
 {
-#if FF_FS_READONLY
-    return _seterror(EACCES);
-#else
     int r;
 
     r = f_mkdir(name);
     return _set_dos_error(r);
-#endif
 }
 
 int v_remove(const char *name)
 {
-#if FF_FS_READONLY
-    return _seterror(EACCES);
-#else
     int r;
 
     r = f_unlink(name);
     return _set_dos_error(r);
-#endif
 }
 
-int v_rmdir(const char *name)
+static int v_rmdir(const char *name)
 {
-#if FF_FS_READONLY
-    return _seterror(EACCES);
-#else
     int r;
 
     r = f_unlink(name);
     return _set_dos_error(r);
-#endif
 }
 
-int v_rename(const char *old, const char *new)
+static int v_rename(const char *old, const char *new)
 {
-#if FF_FS_READONLY
-    return _seterror(EACCES);
-#else
     int r = f_rename(old, new);
     return _set_dos_error(r);
-#endif
 }
  
-int v_open(vfs_file_t *fil, const char *name, int flags)
+static int v_open(vfs_file_t *fil, const char *name, int flags)
 {
   int r;
   FAT_FIL *f = malloc(sizeof(*f));
@@ -422,13 +400,13 @@ int v_open(vfs_file_t *fil, const char *name, int flags)
 /* for now this is a dummy function, but eventually some of the work
  * in _vfs_open_sdcardx could be done here
  */
-int v_init(const char *mountname)
+static int v_init(const char *mountname)
 {
     return 0;
 }
 
 /* deinitialize (unmount) */
-int v_deinit(const char *mountname)
+static int v_deinit(const char *mountname)
 {
     int r = f_mount(0, "", 0);
 #if defined(_DEBUG_FATFS) && defined(__FLEXC__)
@@ -437,7 +415,7 @@ int v_deinit(const char *mountname)
     return 0;
 }
 
-static struct vfs fat_vfs =
+struct vfs fat_vfs =
 {
     &v_close,
     &v_read,
@@ -446,7 +424,7 @@ static struct vfs fat_vfs =
     
     &v_ioctl,
     0, /* no flush function */
-    0, /* vfs_data */
+    0, /* reserved1 */
     0, /* reserved2 */
     
     &v_open,
@@ -468,34 +446,12 @@ static struct vfs fat_vfs =
 };
 
 struct vfs *
-get_vfs(void *ptr)
+get_vfs()
 {
-    struct vfs *v = _gc_alloc_managed(sizeof(*v));
+    return &fat_vfs;
+}
 
-    v->close = &v_close;
-    v->read = &v_read;
-    v->write = &v_write;
-    v->lseek = &v_lseek;
-    v->ioctl = &v_ioctl;
-    v->flush = 0;  // no flush function
-    v->vfs_data = ptr;
-    v->reserved = 0;
-
-    v->open = &v_open;
-    v->creat = &v_creat;
-    v->opendir = &v_opendir;
-    v->closedir = &v_closedir;
-    v->readdir = &v_readdir;
-    v->stat = &v_stat;
-
-    v->mkdir = &v_mkdir;
-    v->rmdir = &v_rmdir;
-
-    v->remove = &v_remove;
-    v->rename = &v_rename;
-
-    v->init = &v_init;
-    v->deinit = &v_deinit;
-    
-    return v;
+int set_pins(int drv, int pclk, int pss, int pdi, int pdo)
+{
+    disk_setpins(drv, pclk, pss, pdi, pdo);
 }

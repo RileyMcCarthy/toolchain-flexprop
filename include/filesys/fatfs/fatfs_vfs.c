@@ -4,21 +4,19 @@
 #include <dirent.h>
 #include "ff.h"
 
+static struct __using("filesys/fatfs/fatfs.cc") FFS;
+static FATFS FatFs;
+
 struct vfs *
 _vfs_open_sdcardx(int pclk, int pss, int pdi, int pdo)
 {
     int r;
     struct vfs *v;
     int drv = 0;
-    struct __using("filesys/fatfs/fatfs.cc") *FFS;
-    FATFS *FatFs;
-
-    FFS = _gc_alloc_managed(sizeof(*FFS));
-    FatFs = _gc_alloc_managed(sizeof(*FatFs));
     
-    r = FFS->disk_setpins(drv, pclk, pss, pdi, pdo);
+    r = FFS.disk_setpins(drv, pclk, pss, pdi, pdo);
     if (r == 0) {
-        r = FFS->f_mount(FatFs, "", 0);
+        r = FFS.f_mount(&FatFs, "", 0);
     }
     if (r != 0) {
 #ifdef _DEBUG
@@ -28,7 +26,7 @@ _vfs_open_sdcardx(int pclk, int pss, int pdi, int pdo)
        _seterror(-r);
        return 0;
     }
-    v = FFS->get_vfs(FFS);
+    v = FFS.get_vfs();
 #ifdef _DEBUG
     {
         unsigned *ptr = (unsigned *)v;

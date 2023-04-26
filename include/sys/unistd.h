@@ -37,8 +37,8 @@ extern "C" {
 
   int isatty(int fd) _IMPL("libc/unix/isatty.c");
 
-  char *getcwd(char *buf, int size) _COMPLEXIO _IMPL("libc/unix/_mount.c");
-  int chdir(const char *path) _COMPLEXIO _IMPL("libc/unix/_mount.c");
+  char *getcwd(char *buf, int size) _COMPLEXIO _IMPL("libc/unix/mount.c");
+  int chdir(const char *path) _COMPLEXIO _IMPL("libc/unix/mount.c");
   int rmdir(const char *path) _COMPLEXIO _IMPL("libc/unix/posixio.c");
   int mkdir(const char *path, int mode) _COMPLEXIO _IMPL("libc/unix/posixio.c");
 
@@ -52,9 +52,8 @@ extern "C" {
   char *_mktemp(char *templ);
   char *mktemp(char *);
 
-  const char **_get_environ_ptr() _IMPL("libc/stdlib/getenv.c");
-  void _put_environ_ptr(const char **ptr) _IMPL("libc/stdlib/getenv.c");
-#define environ _get_environ_ptr()
+    extern const char **_environ_ptr;
+#define environ _environ_ptr    
 #define getuid() (0)
 #define getgid() (0)
 #define getpid() (1)

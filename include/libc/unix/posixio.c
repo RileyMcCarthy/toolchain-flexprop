@@ -48,7 +48,6 @@ static vfs_file_t __filetab[_MAX_FILES] = {
         O_RDONLY, /* flags */
         _VFS_STATE_INUSE|_VFS_STATE_RDOK, /* state */
         0, /* lock */
-        0, /* ungot */
         0, /* read */
         0, /* write */
         (putcfunc_t)&_txputc, /* putc */
@@ -63,7 +62,6 @@ static vfs_file_t __filetab[_MAX_FILES] = {
         O_WRONLY, /* flags */
         _VFS_STATE_INUSE|_VFS_STATE_WROK,
         0, /* lock */
-        0, /* ungot */
         0, /* read */
         0, /* write */
         (putcfunc_t)&_txputc, /* putchar */
@@ -78,7 +76,6 @@ static vfs_file_t __filetab[_MAX_FILES] = {
         O_WRONLY, /* flags */
         _VFS_STATE_INUSE|_VFS_STATE_WROK,
         0, /* lock */
-        0, /* ungot */
         0, /* read */
         0, /* write */
         (putcfunc_t)&_txputc, /* putchar */
@@ -214,16 +211,6 @@ int _closeraw(void *f_ptr)
     }
     memset(f, 0, sizeof(*f));
     return r;
-}
-
-int _freefile()
-{
-    vfs_file_t *tab = &__filetab[0];
-    int fd;
-    for (fd = 0; fd < _MAX_FILES; fd++) {
-        if (tab[fd].state == 0) return fd;
-    }
-    return -1;
 }
 
 int open(const char *orig_name, int flags, mode_t mode=0644)
