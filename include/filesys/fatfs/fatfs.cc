@@ -26,6 +26,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+unsigned long long f_pinmask;
+
 unsigned int _get_fattime()
 {
     time_t now;
@@ -280,6 +282,9 @@ ssize_t v_write(vfs_file_t *fil, void *buf, size_t siz)
     if (!f) {
         return _seterror(EBADF);
     }
+#if FF_FS_READONLY
+    return _seterror(EACCES);
+#else
 #ifdef _DEBUG_FATFS    
     __builtin_printf("v_write: f_write %d bytes:", siz);
 #endif    
@@ -292,6 +297,7 @@ ssize_t v_write(vfs_file_t *fil, void *buf, size_t siz)
         return _set_dos_error(r);
     }
     return x;
+#endif
 }
 off_t v_lseek(vfs_file_t *fil, off_t offset, int whence)
 {
@@ -329,32 +335,48 @@ int v_ioctl(vfs_file_t *fil, unsigned long req, void *argp)
 
 int v_mkdir(const char *name, mode_t mode)
 {
+#if FF_FS_READONLY
+    return _seterror(EACCES);
+#else
     int r;
 
     r = f_mkdir(name);
     return _set_dos_error(r);
+#endif
 }
 
 int v_remove(const char *name)
 {
+#if FF_FS_READONLY
+    return _seterror(EACCES);
+#else
     int r;
 
     r = f_unlink(name);
     return _set_dos_error(r);
+#endif
 }
 
 int v_rmdir(const char *name)
 {
+#if FF_FS_READONLY
+    return _seterror(EACCES);
+#else
     int r;
 
     r = f_unlink(name);
     return _set_dos_error(r);
+#endif
 }
 
 int v_rename(const char *old, const char *new)
 {
+#if FF_FS_READONLY
+    return _seterror(EACCES);
+#else
     int r = f_rename(old, new);
     return _set_dos_error(r);
+#endif
 }
  
 int v_open(vfs_file_t *fil, const char *name, int flags)
@@ -411,9 +433,11 @@ int v_init(const char *mountname)
 int v_deinit(const char *mountname)
 {
     int r = f_mount(0, "", 0);
+    
 #if defined(_DEBUG_FATFS) && defined(__FLEXC__)
     __builtin_printf("  deinit: f_mount returned %d\n", r);
-#endif                        
+#endif
+    _freepins(f_pinmask);
     return 0;
 }
 
