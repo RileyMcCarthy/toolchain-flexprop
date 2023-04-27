@@ -120,6 +120,7 @@ jobs:
           
         # make spin2cpp
           run: |
+            git config --global --add safe.directory ${PWD}
             make
             cp build/flexcc artifacts/flexcc
             cp build/flexspin artifacts/flexspin
