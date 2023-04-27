@@ -11,7 +11,8 @@
 #include <stdio.h>
 #include <errno.h>
 
-FILE *fopen(const char *pathname, const char *mode) _COMPLEXIO
+FILE *
+fopen(const char *pathname, const char *mode)
 {
     int want_read = 0;
     int want_write = 0;
@@ -85,13 +86,10 @@ FILE *fopen(const char *pathname, const char *mode) _COMPLEXIO
 #ifdef DEBUG
     __builtin_printf("fopen returning %x state=%x\n", ftab, ftab->state);
 #endif        
-    if (isatty(fd)) {
-        ftab->state |= _VFS_STATE_ISATTY;
-    }
     return ftab;
 }
 
-int fclose(FILE *f) _COMPLEXIO
+int fclose(FILE *f)
 {
     return _closeraw(f);
 }

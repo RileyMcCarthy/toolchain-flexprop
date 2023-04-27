@@ -1,7 +1,7 @@
 #include <errno.h>
 #include <string.h>
 
-static char *_sys_errlist[] = {
+char *_sys_errlist[] = {
   "OK",
   "Numerical argument out of domain",
   "Result not representable",

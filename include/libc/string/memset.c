@@ -10,8 +10,6 @@
 #include <stdint.h>
 #include <compiler.h>
 
-#undef memset
-
 /*
  * set some memory to a value
  */

@@ -42,7 +42,6 @@ extern "C" {
     void *realloc(void *, size_t) _IMPL("libc/stdlib/malloc.c");
     void free(void *) _IMPL("libc/stdlib/malloc.c");
 
-#define ATEXIT_MAX (32)
     int atexit(void (*func)(void)) _IMPL("libc/stdlib/exit.c");
     _NORETURN void exit(int status) _IMPL("libc/stdlib/exit.c");
     _NORETURN void abort(void) _IMPL("libc/stdlib/abort.c");
@@ -80,7 +79,7 @@ extern "C" {
 		int (*compare)(const void *, const void *));
 
     char *getenv(const char *name) _IMPL("libc/stdlib/getenv.c");
-    int putenv(const char *name) _IMPL("libc/stdlib/putenv.c");
+    int putenv(const char *name) _IMPL("libc/stdlib/getenv.c");
 
   /* multibyte character functions */
   extern int _mb_cur_max;

@@ -35,7 +35,7 @@ int gettimeofday(struct timeval *tv, void *unused)
 }
 
 int
-settimeofday(const struct timeval *tv, const void *unused)
+settimeofday(struct timeval *tv, void *unused)
 {
     uint32_t now = _getus();
     lastsec = tv->tv_sec;

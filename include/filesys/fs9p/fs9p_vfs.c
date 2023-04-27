@@ -1,9 +1,3 @@
-//
-// simple test program for 9p access to host files
-// Written by Eric R. Smith, Total Spectrum Software Inc.
-// Released into the public domain.
-//
-
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
@@ -59,10 +53,10 @@ static int plain_sendrecv(uint8_t *startbuf, uint8_t *endbuf, int maxlen)
         return -1; // not a valid message
     }
     // loadp2's server looks for magic start sequence of $FF, $01
-    _txraw(0xff);
-    _txraw(0x01);
+    _tx(0xff);
+    _tx(0x01);
     while (len>0) {
-        _txraw(*buf++);
+        _tx(*buf++);
         --len;
     }
     len = zdoGet4();

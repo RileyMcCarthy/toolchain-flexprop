@@ -18,8 +18,6 @@
 '   start serial on pins 63 and 62 at given baud rate
 ' startx(rxpin, txpin, flags, baud):
 '   start on pins rxpin,txpin and given baud rate; `flags` is ignored
-'   and is provided for backwards compatibility. if rxpin or txpin is -1,
-'   that pin is ignored
 ' tx(c)
 '   send character `c` (must call start or startx first)
 ' rxcheck()
@@ -40,16 +38,12 @@ var
 '' start(baud)                         - PST way
 ''
 '' fastspin can handle this by giving default parameter values;
-'' if a "txpin" of -99 is detected, then we assume the second way
+'' if a "txpin" of -1 is detected, then we assume the second way
 '' was called
 ''
-'' otherwise a negative value for a pin means no receive (or no transmit)
-''
-'' so to just set up transmit on pin 6 at 115_200 baud do
-''    start(6, -1, 0, 115_200)
-''
-pub start(rxpin, txpin=-99, mode=0, baudrate=230400)
-  if txpin == -99
+
+pub start(rxpin, txpin=-1, mode=0, baudrate=230400)
+  if txpin == -1
      baudrate := rxpin
      rxpin := 63
      txpin := 62
@@ -67,24 +61,21 @@ pub startx(rxpin, txpin, mode, baudrate) | bitperiod, bit_mode
   bit_mode := 7 + (bitperiod << 16)
 
   ' set up the transmit pin
-  if txpin => 0
-    pinf(txpin)
-    wrpin(txpin, _txmode)
-    wxpin(txpin, bit_mode)
-    pinl(txpin)	' turn smartpin on by making the pin an output
+  pinf(txpin)
+  wrpin(txpin, _txmode)
+  wxpin(txpin, bit_mode)
+  pinl(txpin)	' turn smartpin on by making the pin an output
 
   ' set up the receive pin
-  if rxpin => 0
-    pinf(rxpin)
-    wrpin(rxpin, _rxmode)
-    wxpin(rxpin, bit_mode)
-    pinl(rxpin)  ' turn smartpin on
+  pinf(rxpin)
+  wrpin(rxpin, _rxmode)
+  wxpin(rxpin, bit_mode)
+  pinl(rxpin)  ' turn smartpin on
 
 ' transmit the 8 bit value "val"
 pub tx(val)
-  if tx_pin => 0
-    wypin(tx_pin, val)
-    txflush()
+  wypin(tx_pin, val)
+  txflush
 
 pub txflush() | z
   repeat
@@ -97,11 +88,10 @@ pub txflush() | z
 pub rxcheck() : rxbyte | rxpin, z
   rxbyte := -1
   rxpin := rx_pin
-  if rxpin => 0
-    z := pinr(rxpin)
-    if z
-      rxbyte := rdpin(rxpin)>>24
-       
+  z := pinr(rxpin)
+  if z
+    rxbyte := rdpin(rxpin)>>24
+    
 
 ' receive a byte (waits until one ready)
 pub rx() : v
