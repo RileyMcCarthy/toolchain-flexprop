@@ -30,15 +30,21 @@ jobs:
       - name: Move Tools
         run: |
           mkdir ./tools
-          msys2 -c 'cp build/flexcc tools/flexcc.exe'
-          msys2 -c 'cp build/flexspin tools/flexspin.exe'
-          msys2 -c 'cp build/spin2cpp tools/spin2cpp.exe'
+          msys2 -c 'cp build/flexcc tools/'
+          msys2 -c 'cp build/flexspin tools/'
+          msys2 -c 'cp build/spin2cpp tools/'
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
         with:
           name: tools-${{ runner.os }}-${{ runner.arch }}
           path: 'tools/'
+     # Uploading include folder
+      - name: Archive include files
+        uses: actions/upload-artifact@v3
+        with:
+          name: include
+          path: 'include/'
   build-linux-macos-x64:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -58,9 +64,9 @@ jobs:
       - name: Move Tools
         run: |
           mkdir ./tools
-          cp build/flexcc tools/flexcc
-          cp build/flexspin tools/flexspin
-          cp build/spin2cpp tools/spin2cpp
+          cp build/flexcc tools/
+          cp build/flexspin tools/
+          cp build/spin2cpp tools/
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
@@ -93,21 +99,15 @@ jobs:
       - name: Move Tools
         run: |
           mkdir ./tools
-          cp build/flexcc tools/flexcc${{ runner.arch }}
-          cp build/flexspin tools/flexspin${{ runner.arch }}
-          cp build/spin2cpp tools/spin2cpp${{ runner.arch }}
+          cp build/flexcc tools/
+          cp build/flexspin tools/
+          cp build/spin2cpp tools/
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
         with:
-          name: tools-${{ runner.os }}-${{ runner.arch }}
+          name: tools-Linux-${{ matrix.arch }}
           path: 'tools/'
-       # Uploading include folder
-      - name: Archive include files
-        uses: actions/upload-artifact@v3
-        with:
-          name: include
-          path: 'include/'
   create-release:
     needs: [build-win-x64, build-linux-macos-x64, build-linux-armv7]
     runs-on: ubuntu-latest
@@ -148,16 +148,19 @@ jobs:
       run: |
         mkdir -p 'bin'
         rm -R -f include
-        cp -R artifacts/tools-Linux/include ./
-        cp artifacts/tools-Windows-X64/flexcc.exe ./bin
-        cp artifacts/tools-Windows-X64/flexspin.exe ./bin
-        cp artifacts/tools-Windows-X64/spin2cpp.exe ./bin
-        cp artifacts/tools-Linux-X64/flexcc ./bin
-        cp artifacts/tools-Linux-X64/flexspin ./bin
-        cp artifacts/tools-Linux-X64/spin2cpp ./bin
-        cp artifacts/tools-macOS-X64/flexcc.mac ./bin
-        cp artifacts/tools-macOS-X64/flexspin.mac ./bin
-        cp artifacts/tools-macOS-X64/spin2cpp.mac ./bin
+        cp -R artifacts/tools-Windows-X64/include ./
+        cp artifacts/tools-Windows-X64/flexcc ./bin/flexcc.exe
+        cp artifacts/tools-Windows-X64/flexspin ./bin/flexspin.exe
+        cp artifacts/tools-Windows-X64/spin2cpp ./bin/spin2cpp.exe
+        cp artifacts/tools-Linux-X64/flexcc ./bin/flexcc
+        cp artifacts/tools-Linux-X64/flexspin ./bin/flexspin
+        cp artifacts/tools-Linux-X64/spin2cpp ./bin/spin2cpp
+        cp artifacts/tools-macOS-X64/flexcc ./bin/flexcc.mac
+        cp artifacts/tools-macOS-X64/flexspin ./bin/flexspin.mac
+        cp artifacts/tools-macOS-X64/spin2cpp ./bin/spin2cpp.mac
+        cp artifacts/tools-Linux-armv7/flexcc ./bin/flexcc.rpi
+        cp artifacts/tools-Linux-armv7/flexspin ./bin/flexspin.rpi
+        cp artifacts/tools-Linux-armv7/spin2cpp ./bin/spin2cpp.rpi
         rm -R artifacts
     - name: Change permissions
       run: chmod a+rwx ./bin/*
