@@ -30,9 +30,9 @@ jobs:
       - name: Move Tools
         run: |
           mkdir ./tools
-          cp build/flexcc.exe tools/flexcc
-          cp build/flexspin.exe tools/flexspin
-          cp build/spin2cpp.exe tools/spin2cpp
+          cp build-win32/flexcc.exe tools/flexcc
+          cp build-win32/flexspin.exe tools/flexspin
+          cp build-win32/spin2cpp.exe tools/spin2cpp
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
