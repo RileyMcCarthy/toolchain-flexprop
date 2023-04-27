@@ -102,11 +102,11 @@ jobs:
           githubToken: ${{ github.token }}
           # Create an artifacts directory
           setup: |
-            mkdir -p "./artifacts/"
-            mkdir -p "./artifacts/${{ matrix.arch }}"
+            mkdir -p "${{ github.workspace }}/artifacts/"
+            mkdir -p "${{ github.workspace }}/artifacts/${{ matrix.arch }}"
           # Mount the artifacts directory as /artifacts in the container
           dockerRunArgs: |
-            --volume "./artifacts:/artifacts"
+            --volume "${{ github.workspace }}/artifacts:/artifacts"
         # The shell to run commands with in the container
           shell: /bin/sh
           install: |
