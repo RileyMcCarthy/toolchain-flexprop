@@ -113,9 +113,9 @@ jobs:
           shell: /bin/sh
         
           install: |
-            sudo apt-get update
-            sudo apt-get install flex
-            sudo apt-get install build-essential
+           apt-get update
+           apt-get install flex
+           apt-get install build-essential
           
         # make spin2cpp
           run: |
