@@ -103,10 +103,10 @@ jobs:
           # Create an artifacts directory
           setup: |
             mkdir -p "${{ github.workspace }}/artifacts/"
-            mkdir -p "${{ github.workspace }}/artifacts/${{ matrix.arch }}"
+            mkdir -p "${{ github.workspace }}/artifacts"
           # Mount the artifacts directory as /artifacts in the container
           dockerRunArgs: |
-            --volume "${{ github.workspace }}/artifacts/${{ matrix.arch }}:/artifacts"
+            --volume "${{ github.workspace }}/artifacts:/artifacts"
         # The shell to run commands with in the container
           shell: /bin/sh
           install: |
@@ -123,7 +123,6 @@ jobs:
       - name: view archive
         run: |
           ls artifacts/   
-          ls artifacts/${{ matrix.arch }}
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
