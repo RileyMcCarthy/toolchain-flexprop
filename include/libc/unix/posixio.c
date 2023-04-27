@@ -32,16 +32,26 @@ static int __dummy_flush(vfs_file_t *f)
 extern int _tx(int c);
 extern int _rx(void);
 
+#ifdef __OUTPUT_BYTECODE__
+// need to exactly match up arguments for putc
+static int _txputc(int c, void *arg) { _tx(c); return 1; }
+static int _rxgetc(void *arg) { return _rx(); }
+#else
+#define _txputc _tx
+#define _rxgetc _rx
+#endif
+
 static vfs_file_t __filetab[_MAX_FILES] = {
     /* stdin */
     {
         0, /* vfsdata */
         O_RDONLY, /* flags */
         _VFS_STATE_INUSE|_VFS_STATE_RDOK, /* state */
+        0, /* lock */
         0, /* read */
         0, /* write */
-        (putcfunc_t)&_tx, /* putc */
-        (getcfunc_t)&_rx, /* getc */
+        (putcfunc_t)&_txputc, /* putc */
+        (getcfunc_t)&_rxgetc, /* getc */
         0, /* close function */
         &_rxtxioctl,
         &__dummy_flush, /* flush function */
@@ -51,10 +61,11 @@ static vfs_file_t __filetab[_MAX_FILES] = {
         0, /* vfsdata */
         O_WRONLY, /* flags */
         _VFS_STATE_INUSE|_VFS_STATE_WROK,
+        0, /* lock */
         0, /* read */
         0, /* write */
-        (putcfunc_t)&_tx, /* putchar */
-        (getcfunc_t)&_rx, /* getchar */
+        (putcfunc_t)&_txputc, /* putchar */
+        (getcfunc_t)&_rxgetc, /* getchar */
         0, /* close function */
         &_rxtxioctl,
         &__dummy_flush, /* flush function */
@@ -64,10 +75,11 @@ static vfs_file_t __filetab[_MAX_FILES] = {
         0, /* vfsdata */
         O_WRONLY, /* flags */
         _VFS_STATE_INUSE|_VFS_STATE_WROK,
+        0, /* lock */
         0, /* read */
         0, /* write */
-        (putcfunc_t)&_tx, /* putchar */
-        (getcfunc_t)&_rx, /* getchar */
+        (putcfunc_t)&_txputc, /* putchar */
+        (getcfunc_t)&_rxgetc, /* getchar */
         0, /* close function */
         &_rxtxioctl,
         &__dummy_flush, /* flush function */
@@ -92,7 +104,7 @@ _openraw(void *fil_ptr, const char *orig_name, int flags, mode_t mode)
     vfs_file_t *fil = fil_ptr;
     
     char *name = __getfilebuffer();
-    v = (struct vfs *)__getvfsforfile(name, orig_name);
+    v = (struct vfs *)__getvfsforfile(name, orig_name, NULL);
     if (!v || !v->open) {
 #ifdef _DEBUG
         __builtin_printf("ENOSYS: vfs == %x\n", (unsigned)v);
@@ -110,7 +122,7 @@ _openraw(void *fil_ptr, const char *orig_name, int flags, mode_t mode)
     if (r != 0 && (flags & O_CREAT)) {
 #ifdef _DEBUG
         __builtin_printf("_openraw: calling v->creat\n");
-#endif        
+#endif
         r = (*v->creat)(fil, name, mode);
     }
 #ifdef _DEBUG
@@ -138,7 +150,15 @@ _openraw(void *fil_ptr, const char *orig_name, int flags, mode_t mode)
         if (!fil->ioctl) fil->ioctl = v->ioctl;
         if (!fil->lseek) fil->lseek = v->lseek;
         if (!fil->putcf) {
-            fil->putcf = &__default_putc;
+            // check for TTY
+            int ttychk;
+            unsigned int ttyval;
+            ttychk = (*fil->ioctl)(fil, TTYIOCTLGETFLAGS, &ttyval);
+            if (ttychk == 0 && (ttyval & TTY_FLAG_CRNL)) {
+                fil->putcf = &__default_putc_terminal;
+            } else {
+                fil->putcf = &__default_putc;
+            }
 #ifdef _DEBUG
             {
                 unsigned *ptr = (unsigned *)fil->putcf;
@@ -172,6 +192,7 @@ _openraw(void *fil_ptr, const char *orig_name, int flags, mode_t mode)
 #ifdef _DEBUG
     __builtin_printf("openraw: fil=%x vfsdata=%x\n", (unsigned)fil, (unsigned)fil->vfsdata);
 #endif    
+    if (r == 0) _seterror(EOK);
     return r;
 }
 
@@ -190,6 +211,16 @@ int _closeraw(void *f_ptr)
     }
     memset(f, 0, sizeof(*f));
     return r;
+}
+
+int _freefile()
+{
+    vfs_file_t *tab = &__filetab[0];
+    int fd;
+    for (fd = 0; fd < _MAX_FILES; fd++) {
+        if (tab[fd].state == 0) return fd;
+    }
+    return -1;
 }
 
 int open(const char *orig_name, int flags, mode_t mode=0644)
@@ -279,16 +310,25 @@ ssize_t _vfsread(vfs_file_t *f, void *vbuf, size_t count)
     int break_on_nl = 0;
     
     if (! (f->state & _VFS_STATE_RDOK) ) {
+#ifdef _DEBUG
+        __builtin_printf("not OK to read\n");
+#endif        
         return _seterror(EACCES);
     }
     if (f->read) {
         r = (*f->read)(f, vbuf, count);
+#ifdef _DEBUG
+        __builtin_printf("f->read(%d) returned %d\n", count, r);
+#endif        
         if (r < 0) {
             f->state |= _VFS_STATE_ERR;
             return _seterror(r);
         }
         return r;
     }
+#ifdef _DEBUG
+    __builtin_printf("f->read(%d) slow path\n", count);
+#endif        
     rx = f->getcf;
     if (!rx) {
         return _seterror(EACCES);
@@ -366,7 +406,7 @@ unlink(const char *orig_name)
     int r;
     struct vfs *v;
     char *name = __getfilebuffer();
-    v = (struct vfs *)__getvfsforfile(name, orig_name);
+    v = (struct vfs *)__getvfsforfile(name, orig_name, NULL);
     if (!v || !v->open) {
 #ifdef _DEBUG
         __builtin_printf("rmdir: ENOSYS: vfs=%x\n", (unsigned)v);
@@ -386,7 +426,7 @@ rmdir(const char *orig_name)
     struct vfs *v;
     char *name = __getfilebuffer();
     int r;
-    v = (struct vfs *)__getvfsforfile(name, orig_name);
+    v = (struct vfs *)__getvfsforfile(name, orig_name, NULL);
     if (!v || !v->rmdir) {
 #ifdef _DEBUG
         __builtin_printf("rmdir: ENOSYS: vfs=%x\n", (unsigned)v);
@@ -406,7 +446,7 @@ mkdir(const char *orig_name, mode_t mode)
     int r;
     struct vfs *v;
     char *name = __getfilebuffer();
-    v = (struct vfs *)__getvfsforfile(name, orig_name);
+    v = (struct vfs *)__getvfsforfile(name, orig_name, NULL);
     if (!v || !v->open) {
 #ifdef _DEBUG
         __builtin_printf("rmdir: ENOSYS: vfs=%x\n", (unsigned)v);
