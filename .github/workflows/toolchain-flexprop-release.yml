@@ -45,7 +45,7 @@ jobs:
         with:
           name: include
           path: 'include/'
-  build-linux-macos-x64:
+  build-x64:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -73,7 +73,7 @@ jobs:
         with:
           name: tools-${{ runner.os }}-${{ runner.arch }}
           path: 'tools/'
-  build-linux-armv7:
+  build-linux-arm:
     runs-on: ubuntu-latest
     name: Build on ${{ matrix.distro }} ${{ matrix.arch }}
 
@@ -81,8 +81,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - arch: aarch64
-            distro: ubuntu_latest
           - arch: armv7
             distro: ubuntu_latest
     steps:
@@ -113,6 +111,11 @@ jobs:
 
         # The shell to run commands with in the container
           shell: /bin/sh
+        
+          install: |
+            sudo apt-get update
+            sudo apt-get install flex
+            sudo apt-get install build-essential
           
         # make spin2cpp
           run: |
