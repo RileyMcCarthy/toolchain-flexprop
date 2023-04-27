@@ -115,9 +115,8 @@ jobs:
           shell: /bin/sh
           
         # make spin2cpp
-          build: make
-        # Rename tools
-          move: |
+          run: |
+            make
             cp build/flexcc artifacts/flexcc
             cp build/flexspin artifacts/flexspin
             cp build/spin2cpp artifacts/spin2cpp
