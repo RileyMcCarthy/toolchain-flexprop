@@ -120,6 +120,10 @@ jobs:
             cp build/flexcc artifacts/flexcc
             cp build/flexspin artifacts/flexspin
             cp build/spin2cpp artifacts/spin2cpp
+      - name: view archive
+        run: |
+          ls artifacts/   
+          ls artifacts/armv7
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
