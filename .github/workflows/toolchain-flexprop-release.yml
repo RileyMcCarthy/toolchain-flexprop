@@ -106,7 +106,7 @@ jobs:
             mkdir -p "${{ github.workspace }}/artifacts/${{ matrix.arch }}"
           # Mount the artifacts directory as /artifacts in the container
           dockerRunArgs: |
-            --volume "${{ github.workspace }}/artifacts:/artifacts"
+            --volume "${{ github.workspace }}/artifacts/${{ matrix.arch }}:/artifacts"
         # The shell to run commands with in the container
           shell: /bin/sh
           install: |
