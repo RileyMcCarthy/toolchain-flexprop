@@ -149,9 +149,6 @@ jobs:
         mkdir -p 'bin'
         rm -R -f include
         cp -R artifacts/include ./
-        cp artifacts/tools-Windows-X64/flexcc ./bin/flexcc.exe
-        cp artifacts/tools-Windows-X64/flexspin ./bin/flexspin.exe
-        cp artifacts/tools-Windows-X64/spin2cpp ./bin/spin2cpp.exe
         cp artifacts/tools-Linux-X64/flexcc ./bin/flexcc
         cp artifacts/tools-Linux-X64/flexspin ./bin/flexspin
         cp artifacts/tools-Linux-X64/spin2cpp ./bin/spin2cpp
@@ -161,6 +158,9 @@ jobs:
         cp artifacts/tools-Linux-armv7/flexcc ./bin/flexcc.rpi
         cp artifacts/tools-Linux-armv7/flexspin ./bin/flexspin.rpi
         cp artifacts/tools-Linux-armv7/spin2cpp ./bin/spin2cpp.rpi
+        cp artifacts/tools-Windows-X64/flexcc ./bin/flexcc.exe
+        cp artifacts/tools-Windows-X64/flexspin ./bin/flexspin.exe
+        cp artifacts/tools-Windows-X64/spin2cpp ./bin/spin2cpp.exe
         rm -R artifacts
     - name: Change permissions
       run: chmod a+rwx ./bin/*
