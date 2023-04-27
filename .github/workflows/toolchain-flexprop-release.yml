@@ -92,22 +92,41 @@ jobs:
           repository: totalspectrum/spin2cpp
           ref: v${{ github.event.inputs.branch }}
           submodules: recursive
-      # make spin2cpp
-      - name: Make targets
-        run: make
-      # Rename tools
-      - name: Move Tools
-        run: |
-          mkdir ./tools
-          cp build/flexcc tools/flexcc
-          cp build/flexspin tools/flexspin
-          cp build/spin2cpp tools/spin2cpp
+      - uses: uraimo/run-on-arch-action@v2
+        name: Build artifact
+        id: build
+        with:
+          arch: ${{ matrix.arch }}
+          distro: ${{ matrix.distro }}
+
+          # Not required, but speeds up builds
+          githubToken: ${{ github.token }}
+          
+          # Create an artifacts directory
+          setup: |
+            mkdir -p "${PWD}/artifacts/"
+            mkdir -p "${PWD}/artifacts/${{ matrix.arch }}"
+
+          # Mount the artifacts directory as /artifacts in the container
+          dockerRunArgs: |
+            --volume "${PWD}/artifacts:/artifacts"
+
+        # The shell to run commands with in the container
+          shell: /bin/sh
+          
+        # make spin2cpp
+          build: make
+        # Rename tools
+          move: |
+            cp build/flexcc artifacts/flexcc
+            cp build/flexspin artifacts/flexspin
+            cp build/spin2cpp artifacts/spin2cpp
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
         with:
-          name: tools-Linux-${{ matrix.arch }}
-          path: 'tools/'
+          name: tools-Linux
+          path: '${PWD}/artifacts/'
   create-release:
     needs: [build-win-x64, build-linux-macos-x64, build-linux-armv7]
     runs-on: ubuntu-latest
@@ -115,12 +134,15 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
+    
     - name: Create artifact dir
       run: mkdir -p ./artifacts
+    
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
         path: ./artifacts
+    
     - name: Update platformio package.json
       run: >
         echo '
@@ -143,6 +165,7 @@ jobs:
           "license": "GPL-2.0-or-later"
         }
         ' > 'package.json'
+    
     # Create build directory
     - name: Create release directory and copy required files
       run: |
@@ -155,15 +178,17 @@ jobs:
         cp artifacts/tools-macOS-X64/flexcc ./bin/flexcc.mac
         cp artifacts/tools-macOS-X64/flexspin ./bin/flexspin.mac
         cp artifacts/tools-macOS-X64/spin2cpp ./bin/spin2cpp.mac
-        cp artifacts/tools-Linux-armv7/flexcc ./bin/flexcc.rpi
-        cp artifacts/tools-Linux-armv7/flexspin ./bin/flexspin.rpi
-        cp artifacts/tools-Linux-armv7/spin2cpp ./bin/spin2cpp.rpi
+        cp artifacts/tools-Linux/armv7/flexcc ./bin/flexcc.rpi
+        cp artifacts/tools-Linux/armv7/flexspin ./bin/flexspin.rpi
+        cp artifacts/tools-Linux/armv7/spin2cpp ./bin/spin2cpp.rpi
         cp artifacts/tools-Windows-X64/flexcc ./bin/flexcc.exe
         cp artifacts/tools-Windows-X64/flexspin ./bin/flexspin.exe
         cp artifacts/tools-Windows-X64/spin2cpp ./bin/spin2cpp.exe
         rm -R artifacts
+    
     - name: Change permissions
       run: chmod a+rwx ./bin/*
+    
     - name: Push updated package
       run: |
         git config --global user.name 'rileymccarthy'
