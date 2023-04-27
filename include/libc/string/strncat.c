@@ -5,7 +5,10 @@
  * strncat - append at most n characters of string src to dst
  */
 char *				/* dst */
-strncat(char *dst, const char *src, size_t n)
+strncat(dst, src, n)
+char *dst;
+const char *src;
+size_t n;
 {
 	register char *dscan, c;
 	register const char *sscan;

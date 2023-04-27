@@ -1,9 +1,6 @@
 #include <sys/vfs.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/stat.h>
-
-//#define _DEBUG
 
 int stat(const char *orig_name, struct stat *buf)
 {
@@ -12,23 +9,16 @@ int stat(const char *orig_name, struct stat *buf)
     int r;
     
 #ifdef _DEBUG
-    __builtin_printf("stat(%s)\n", orig_name);
+    __builtin_printf("stat(%s)\n", name);
 #endif    
-    v = __getvfsforfile(name, orig_name, NULL);
+    v = __getvfsforfile(name, orig_name);
     if (!v || !v->stat) {
 #ifdef _DEBUG
-        __builtin_printf("stat: ENOSYS : name(%s) orig_name(%s)\n", name, orig_name);
+        __builtin_printf("stat: ENOSYS\n");
 #endif        
         return _seterror(ENOSYS);
     }
     memset(buf, 0, sizeof(*buf));
-    if (name[0] == 0) {
-#ifdef _DEBUG
-        __builtin_printf("stat on root directory\n");
-#endif        
-        buf->st_mode = S_IFDIR | 0777;
-        return 0;
-    }
 #ifdef _DEBUG
     {
         unsigned *ptr = (unsigned *)v->stat;

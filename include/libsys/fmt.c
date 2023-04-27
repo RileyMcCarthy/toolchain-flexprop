@@ -6,26 +6,15 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define INCLUDE_FLOATS
-#undef SIMPLE_IO
-
 #ifdef __FLEXC__
-
 #define SMALL_INT
 #define strlen __builtin_strlen
 #define strcpy __builtin_strcpy
-#ifdef SIMPLE_IO
-#define THROW_RETURN(err) return -1
-#else
-#define THROW_RETURN(x) do { __throwifcaught(x); return -1; } while (0)
-#endif
+#define THROW_RETURN(x) __throw(x)
 #include <compiler.h>
-
 #else
-
 #define THROW_RETURN(x) return -1
 #include <string.h>
-
 #endif
 
 #define alloca(x) __builtin_alloca(x)
@@ -33,7 +22,7 @@
 #include "sys/fmt.h"
 
 #define DEFAULT_PREC 6
-#define DEFAULT_BASIC_FLOAT_FMT ((1<<UPCASE_BIT)|((4+1)<<PREC_BIT))
+#define DEFAULT_BASIC_FLOAT_FMT ((1<<ALTFMT_BIT)|(1<<UPCASE_BIT)|((4+1)<<PREC_BIT))
 #define DEFAULT_FLOAT_FMT ((1<<UPCASE_BIT))
 
 //
@@ -85,7 +74,7 @@ int _fmtpad(putfunc fn, unsigned fmt, int width, unsigned leftright)
         width = (width + (leftright==PAD_ON_RIGHT)) / 2;
     }
     for (i = 0; i < width; i++) {
-        r = PUTC(fn, ' ');
+        r = CALL(fn, ' ');
         if (r < 0) return r;
         n += r;
     }
@@ -105,7 +94,7 @@ int _fmtstr(putfunc fn, unsigned fmt, const char *str)
     n = _fmtpad(fn, fmt, width, PAD_ON_LEFT);
     if (n < 0) return n;
     for (i = 0; i < width; i++) {
-        r = PUTC(fn, *str++);
+        r = CALL(fn, *str++);
         if (r < 0) return r;
         n += r;
     }
@@ -122,39 +111,6 @@ int _fmtchar(putfunc fn, unsigned fmt, int c)
     buf[1] = 0;
     return _fmtstr(fn, fmt, buf);
 }
-
-#ifdef SMALL_INT
-int _uitoall(char *orig_str, unsigned long long num, unsigned base, unsigned mindigits, int uppercase)
-{
-    char *str = orig_str;
-    unsigned digit;
-    unsigned width = 0;
-    int letterdigit;
-
-    if (uppercase) {
-        letterdigit = 'A' - 10;
-    } else {
-        letterdigit = 'a' - 10;
-    }
-    do {
-        digit = num % base;        
-        if (digit < 10) {
-            digit += '0';
-        } else {
-            digit += letterdigit;
-        }
-#ifdef _DEBUG_PRINTF
-        __builtin_printf("uitoall: num=%x::%x digit=%c\n", (unsigned)(num>>32), (unsigned)(num), digit);
-#endif        
-        *str++ = digit;
-        num = num / base;
-        width++;
-    } while (num > 0 || width < mindigits);
-    *str++ = 0;
-    _strrev(orig_str);
-    return width;
-}
-#endif
 
 int _uitoa(char *orig_str, UITYPE num, unsigned base, unsigned mindigits, int uppercase)
 {
@@ -178,7 +134,7 @@ int _uitoa(char *orig_str, UITYPE num, unsigned base, unsigned mindigits, int up
         *str++ = digit;
         num = num / base;
         width++;
-    } while (num != 0 || width < mindigits);
+    } while (num > 0 || width < mindigits);
     *str++ = 0;
     _strrev(orig_str);
     return width;
@@ -187,54 +143,6 @@ int _uitoa(char *orig_str, UITYPE num, unsigned base, unsigned mindigits, int up
 #define MAX_NUM_DIGITS 64
 
 int _fmtnum(putfunc fn, unsigned fmt, int x, int base)
-{
-    char buf[MAX_NUM_DIGITS+1];
-    char *ptr = buf;
-    int width = 0;
-    int mindigits = (fmt >> PREC_BIT) & PREC_MASK;
-    int maxdigits = (fmt >> MAXWIDTH_BIT) & 0xff;
-    int signchar = (fmt >> SIGNCHAR_BIT) & 0x3;
-
-    if (mindigits > 0) {
-        // prec gets offset by one to allow 0 to be "default"
-        mindigits = mindigits - 1;
-    }
-    if (maxdigits > MAX_NUM_DIGITS || maxdigits == 0) {
-        maxdigits = MAX_NUM_DIGITS;
-    }
-    if (signchar == SIGNCHAR_UNSIGNED) {
-        signchar = SIGNCHAR_NONE;
-    } else if (x < 0) {
-        signchar = SIGNCHAR_MINUS;
-        x = -x;
-    }
-    if (signchar != SIGNCHAR_NONE) {
-        width++;
-        if (mindigits == maxdigits) {
-            mindigits--;
-            if (!mindigits) {
-                return _fmtchar(fn, fmt, '#');
-            }
-        }
-        if (signchar == SIGNCHAR_SPACE) {
-            *ptr++ = ' ';
-        } else if (signchar == SIGNCHAR_MINUS) {
-            *ptr++ = '-';
-        } else {
-            *ptr++ = '+';
-        }
-    }
-    width += _uitoa(ptr, x, base, mindigits, 0 != (fmt & (1<<UPCASE_BIT)));
-    if (width > maxdigits) {
-        while (maxdigits-- > 0) {
-            *ptr++ = '#';
-        }
-        *ptr++ = 0;
-    }
-    return _fmtstr(fn, fmt, buf);
-}
-
-int _fmtnumlong(putfunc fn, unsigned fmt, long long x, int base)
 {
     char buf[MAX_NUM_DIGITS+1];
     char *ptr = buf;
@@ -277,7 +185,7 @@ int _fmtnumlong(putfunc fn, unsigned fmt, long long x, int base)
             break;
         }
     }
-    width += _uitoall(ptr, x, base, mindigits, 0 != (fmt & (1<<UPCASE_BIT)));
+    width += _uitoa(ptr, x, base, mindigits, 0 != (fmt & (1<<UPCASE_BIT)));
     if (width > maxdigits) {
         while (maxdigits-- > 0) {
             *ptr++ = '#';
@@ -287,7 +195,6 @@ int _fmtnumlong(putfunc fn, unsigned fmt, long long x, int base)
     return _fmtstr(fn, fmt, buf);
 }
 
-#ifdef INCLUDE_FLOATS
 /*******************************************************
  * floating point support
  *******************************************************/
@@ -403,7 +310,7 @@ static void disassemble(FTYPE x, UITYPE *aip, int *np, int numdigits, int base)
     }
 
     while (ai < limit) {
-#ifdef _DEBUG_PRINTF
+#ifdef DEBUG_PRINTF
         __builtin_printf("ai=%d n=%d\n", ai, n);
 #endif        
         --n;
@@ -518,7 +425,7 @@ static void disassemble(FTYPE x, UITYPE *aip, int *np, int numdigits, int base)
         numdigits = maxdigits;
     maxu = 1; // for overflow
     while ( u < DOUBLE_ONE && numdigits-- > 0) {
-        UITYPE d;
+        FTYPE d;
         d = (ai >> DOUBLE_BITS); // next digit
         ai &= DOUBLE_MASK;
         u = u * base;
@@ -577,7 +484,7 @@ int _fmtfloat(putfunc fn, unsigned fmt, FTYPE x, int spec)
     int i;
     int base = 10;
     int exp;  // exponent
-    int isExpFmt = 0;  // output should be printed in exponential notation
+    int isExpFmt;  // output should be printed in exponential notation
     int totalWidth;
     int sign = 0;
     int expchar;
@@ -586,7 +493,6 @@ int _fmtfloat(putfunc fn, unsigned fmt, FTYPE x, int spec)
     int needPrefix = 0;
     int hexSign = 0;
     int padkind = 0;
-    int no_oflow = 0;
     
     // we print a series of 0's, then the digits, then more 0's if necessary
     // to force e.g. 4 leading 0's, set startdigit to -4
@@ -598,18 +504,16 @@ int _fmtfloat(putfunc fn, unsigned fmt, FTYPE x, int spec)
     int expsign = 0;
     int signclass;
     int minwidth;
-    int maxwidth;
     char dig[64]; // digits for the number
     char expdig[8]; // digits for the exponent
     int prec;
     int needUpper;
     char *buf;
     char *origbuf;
-    char tmpbuf[MAXWIDTH + 1];
     int justify;
     int hash_format;
     
-    origbuf = buf = tmpbuf;
+    origbuf = buf = alloca(MAXWIDTH + 1);
 
     prec = (fmt >> PREC_BIT) & PREC_MASK;
     hash_format = (fmt >> ALTFMT_BIT) & 1;
@@ -629,7 +533,6 @@ int _fmtfloat(putfunc fn, unsigned fmt, FTYPE x, int spec)
     justify = (fmt >> JUSTIFY_BIT) & JUSTIFY_MASK;
     needUpper = (fmt >> UPCASE_BIT) & 1;
     minwidth = (fmt >> MINWIDTH_BIT) & WIDTH_MASK;
-    maxwidth = (fmt >> MAXWIDTH_BIT) & WIDTH_MASK;
     isExpFmt = (spec == 'e');
     expchar = needUpper ? 'E' : 'e';
     if (spec == 'a') {
@@ -640,15 +543,6 @@ int _fmtfloat(putfunc fn, unsigned fmt, FTYPE x, int spec)
         hexSign = needUpper ? 'X' : 'x';
     }
 
-    if (spec == '#') {
-        no_oflow = 1;
-        if (hash_format) {
-            spec = 'f';
-            hash_format = 0;
-        } else {
-            hash_format = 1;
-        }
-    }
     signclass = (fmt >> SIGNCHAR_BIT) & SIGNCHAR_MASK;
     
     if ( signbit(x) ) {
@@ -684,11 +578,13 @@ int _fmtfloat(putfunc fn, unsigned fmt, FTYPE x, int spec)
 
     // handle special cases
     if (isinf(x)) {
+        origbuf = buf = alloca(6);
         // emit sign
         if (sign) *buf++ = sign;
         strcpy(buf, "inf");
         goto done;
     } else if (isnan(x)) {
+        origbuf = buf = alloca(6);
         if (sign) *buf++ = sign;
         strcpy(buf, "nan");
         goto done;
@@ -835,31 +731,8 @@ int _fmtfloat(putfunc fn, unsigned fmt, FTYPE x, int spec)
 
 done:
     // now output the string
-    if (maxwidth && no_oflow && strlen(origbuf) > maxwidth) {
-        int j;
-        char *ptr = origbuf;
-        //__builtin_printf("maxwidth=%d, minwidth=%d, prec=%d\n", maxwidth, minwidth, prec);
-        if (isExpFmt) {
-            prec = 0;
-            j = maxwidth;
-        } else {
-            j = (maxwidth-1)-prec;
-        }
-        while (j) {
-            *ptr++ = '*';
-            --j;
-        }
-        if (prec) {
-            *ptr++ = '.';
-            for (j = 0; j<prec; j++) {
-                *ptr++ = '*';
-            }
-        }
-        *ptr++ = 0;
-    }
     return _fmtstr(fn, fmt, origbuf);
 }
-#endif /* INCLUDE_FLOATS */
 
 #ifndef __FLEXC__
 // BASIC support routines
@@ -872,31 +745,14 @@ typedef int (*RxFunc)(void);
 typedef int (*CloseFunc)(void);
 typedef int (*VFS_CloseFunc)(vfs_file_t *);
 
-#ifdef SIMPLE_IO
-#define _gettxfunc(h) ((void *)1)
-#define _getrxfunc(h) ((void *)1)
-# ifdef __FEATURE_MULTICOG__
-static int __iolock;
-int __lockio(int h)   { _lockmem(&__iolock); return 0; }
-int __unlockio(int h) { _unlockmem(&__iolock); return 0; }
-# else
-int __lockio(int h)   { return 0; }
-int __unlockio(int h) { return 0; }
-# endif
-
-#else
 // we want the BASIC open function to work correctly with old Spin
 // interfaces which don't return sensible values from send, so we
 // have to wrap the send function into one which always returns 1
 // use this class to do it:
-// bytecode also may need wrappers for things as well
+
 typedef struct _bas_wrap_sender {
-    TxFunc ftx;
-    RxFunc frx;
-    CloseFunc fclose;
-    int tx(int c, void *arg) { ftx(c); return 1; }
-    int rx(void *arg) { return frx(); }
-    int close(void *arg) { return fclose(); }
+    TxFunc f;
+    int tx(int c) { f(c); return 1; }
 } BasicWrapper;
 
 TxFunc _gettxfunc(unsigned h) {
@@ -911,78 +767,37 @@ RxFunc _getrxfunc(unsigned h) {
     if (!v || !v->state) return 0;
     return (RxFunc)&v->getchar;
 }
-static int *_getiolock(unsigned h) {
-    vfs_file_t *v;
-    static int dummy;
-    v = __getftab(h);
-    if (!v || !v->state) return &dummy;
-    return &v->lock;
-}
-int __lockio(unsigned h) {
-    _lockmem(_getiolock(h)); return 0;
-}
-int __unlockio(unsigned h) {
-    _unlockmem(_getiolock(h)); return 0;
-}
-
-#endif
-
 //
 // basic interfaces
 //
 
 int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
 {
-#ifdef SIMPLE_IO
-    THROW_RETURN(EIO);
-#else    
-    struct _bas_wrap_sender *wrapper = 0;
+    struct _bas_wrap_sender *wrapper;
     vfs_file_t *v;
 
     v = __getftab(h);
-    //__builtin_printf("basic_open(%d) = %x\n", h, (unsigned)v);
     if (!v) {
         THROW_RETURN(EIO);
     }
-    if (v->state) {
-        _closeraw(v);
-    }
-    if (sendf || recvf || closef) {
-        wrapper = _gc_alloc_managed(sizeof(BasicWrapper));
+
+    if (sendf) {
+        wrapper = _gc_alloc_managed(sizeof(_bas_wrap_sender));
         if (!wrapper) {
             THROW_RETURN(ENOMEM); /* out of memory */
         }
-        wrapper->ftx = 0;
-        wrapper->frx = 0;
-    }
-    if (sendf) {
-        wrapper->ftx = sendf;
+        wrapper->f = sendf;
         v->putcf = (putcfunc_t)&wrapper->tx;
     } else {
-        v->putcf = 0;
+        v->putcf = (putcfunc_t)sendf;
     }
-    if (recvf) {
-        wrapper->frx = recvf;
-        v->getcf = &wrapper->rx;
-    } else {
-        v->getcf = 0;
-    }
-    if (closef) {
-        wrapper->fclose = closef;
-        v->close = (VFS_CloseFunc)&wrapper->close;
-    } else {
-        v->close = 0;
-    }
-    v->state = _VFS_STATE_INUSE|_VFS_STATE_RDOK|_VFS_STATE_WROK;
+    v->getcf = (getcfunc_t)recvf;
+    v->close = (VFS_CloseFunc)closef;
     return 0;
-#endif    
 }
 
 int _basic_open_string(unsigned h, char *fname, unsigned iomode)
 {
-#ifdef SIMPLE_IO
-    THROW_RETURN(EIO);
-#else    
     vfs_file_t *v;
     int r;
     
@@ -990,15 +805,12 @@ int _basic_open_string(unsigned h, char *fname, unsigned iomode)
     if (!v) {
         THROW_RETURN(EIO);
     }
-    if (v->state) {
-        _closeraw(v);
-    }
+
     r = _openraw(v, fname, iomode, 0666);
     if (r < 0) {
         THROW_RETURN(_geterror());
     }
     return r;
-#endif    
 }
 
 void _basic_close(unsigned h)
@@ -1008,9 +820,9 @@ void _basic_close(unsigned h)
 
 int _basic_print_char(unsigned h, int c, unsigned fmt)
 {
-    TxFunc fn = _gettxfunc(h);
-    if (!fn) return 0;
-    PUTC(fn, c);
+    TxFunc tf = _gettxfunc(h);
+    if (!tf) return 0;
+    (*tf)(c);
     return 1;
 }
 
@@ -1036,54 +848,6 @@ int _basic_print_unsigned(unsigned h, int x, unsigned fmt, int base)
     return _fmtnum(tf, fmt, x, base);
 }
 
-int _basic_print_unsigned_2(unsigned h, int x1, int x2, unsigned fmt, int base)
-{
-    TxFunc tf;
-    int r;
-    
-    tf = _gettxfunc(h);
-    if (!tf) return 0;
-    fmt |= 3<<SIGNCHAR_BIT;
-    r = _fmtnum(tf, fmt, x1, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x2, base);
-    return r;
-}
-
-int _basic_print_unsigned_3(unsigned h, int x1, int x2, int x3, unsigned fmt, int base)
-{
-    TxFunc tf;
-    int r;
-    
-    tf = _gettxfunc(h);
-    if (!tf) return 0;
-    fmt |= 3<<SIGNCHAR_BIT;
-    r = _fmtnum(tf, fmt, x1, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x2, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x3, base);
-    return r;
-}
-
-int _basic_print_unsigned_4(unsigned h, int x1, int x2, int x3, int x4, unsigned fmt, int base)
-{
-    TxFunc tf;
-    int r;
-    
-    tf = _gettxfunc(h);
-    if (!tf) return 0;
-    fmt |= 3<<SIGNCHAR_BIT;
-    r = _fmtnum(tf, fmt, x1, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x2, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x3, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x4, base);
-    return r;
-}
-
 int _basic_print_integer(unsigned h, int x, unsigned fmt, int base)
 {
     TxFunc tf;
@@ -1093,75 +857,12 @@ int _basic_print_integer(unsigned h, int x, unsigned fmt, int base)
     return _fmtnum(tf, fmt, x, base);
 }
 
-int _basic_print_integer_2(unsigned h, int x1, int x2, unsigned fmt, int base)
-{
-    TxFunc tf;
-    int r;
-    
-    tf = _gettxfunc(h);
-    if (!tf) return 0;
-    r = _fmtnum(tf, fmt, x1, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x2, base);
-    return r;
-}
-
-int _basic_print_integer_3(unsigned h, int x1, int x2, int x3, unsigned fmt, int base)
-{
-    TxFunc tf;
-    int r;
-    tf = _gettxfunc(h);
-    if (!tf) return 0;
-    r = _fmtnum(tf, fmt, x1, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x2, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x3, base);
-    return r;
-}
-
-int _basic_print_integer_4(unsigned h, int x1, int x2, int x3, int x4, unsigned fmt, int base)
-{
-    TxFunc tf;
-    int r;
-    tf = _gettxfunc(h);
-    if (!tf) return 0;
-    r = _fmtnum(tf, fmt, x1, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x2, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x3, base);
-    r += _fmtstr(tf, fmt, ", ");
-    r += _fmtnum(tf, fmt, x4, base);
-    return r;
-}
-
-int _basic_print_longunsigned(unsigned h, unsigned long long x, unsigned fmt, int base)
-{
-    TxFunc tf = _gettxfunc(h);
-    if (!tf) return 0;
-    fmt |= 3<<SIGNCHAR_BIT;
-    return _fmtnumlong(tf, fmt, x, base);
-}
-
-int _basic_print_longinteger(unsigned h, long long int x, unsigned fmt, int base)
-{
-    TxFunc tf;
-    tf = _gettxfunc(h);
-    if (!tf) return 0;
-    return _fmtnumlong(tf, fmt, x, base);
-}
-
 int _basic_get_char(unsigned h)
 {
-#ifdef SIMPLE_IO
-    return _rx();
-#else    
     RxFunc rf;
     rf = _getrxfunc(h);
     if (!rf) return -1;
     return (*rf)();
-#endif    
 }
 
 int _basic_print_float(unsigned h, FTYPE x, unsigned fmt, int ch)
@@ -1173,38 +874,6 @@ int _basic_print_float(unsigned h, FTYPE x, unsigned fmt, int ch)
     tf = _gettxfunc(h);
     if (!tf) return 0;
     return _fmtfloat(tf, fmt, x, ch);
-}
-
-// write "elements" items of size "size" bytes from "data"
-// returns number of bytes (not elements) successfully written
-int _basic_put(int h, unsigned long pos, void *data, unsigned elements, unsigned size)
-{
-    int r;
-    unsigned bytes = elements * size;
-    if (pos != 0) {
-        lseek(h, pos-1, SEEK_SET);
-    }
-    r = write(h, data, bytes);
-    if (r > 0) {
-        r = r / size;
-    }
-    return r;
-}
-
-// read "elements" items of size "size" bytes into "data"
-// returns number of bytes (not elements) successfully read
-int _basic_get(int h, unsigned long pos, void *data, unsigned elements, unsigned size)
-{
-    int r;
-    unsigned bytes = elements * size;
-    if (pos != 0) {
-        lseek(h, pos-1, SEEK_SET);
-    }
-    r = read(h, data, bytes);
-    if (r > 0) {
-        r = r / size;
-    }
-    return r;
 }
 
 #ifdef _TEST_FMT

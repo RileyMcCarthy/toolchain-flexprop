@@ -16,20 +16,12 @@ void __run(long *src, int size, void *arg) __attribute__((cog))
 {
     long *dst = (long *)0;
     long clkmode;
-    long origSize = (size + 3)>>2;
-    size = origSize;
+    size = (size + 3) >> 2;
     do {
         *dst++ = *src++;
         --size;
     } while (size != 0);
 #ifdef __P2__
-    size = (480*1024)/4-origSize;
-    if (size > 0) {
-        do {
-            *dst++ = 0;
-            --size;
-        } while (size != 0);
-    }
     // set the clock back to RCFAST
     clkmode = __clkmode_var & ~3;
     if (clkmode) {
@@ -37,14 +29,6 @@ void __run(long *src, int size, void *arg) __attribute__((cog))
             hubset clkmode
             waitx  ##20_000_000/100
         }
-    }
-#else    
-    size = (30*1024)/4-origSize;
-    if (size > 0) {
-        do {
-            *dst++ = 0;
-            --size;
-        } while (size != 0);
     }
 #endif    
     _coginit(_cogid(), (void *)0, arg);
@@ -54,11 +38,13 @@ void __run(long *src, int size, void *arg) __attribute__((cog))
 // for now the arguments and environment are ignored
 // someday we'll implement them!
 //
-int _execve(const char *filename, char **argv, char **envp)
+int _execve(const char *filename, char **argv = 0, char **envp = 0)
 {
     vfs_file_t *tab = __getftab(0);
     int fd;
     int r;
+    char *buf, *ptr, *topmem;
+    int sizeleft;
     vfs_file_t *f;
     
     // find an empty slot... actually this
@@ -76,24 +62,6 @@ int _execve(const char *filename, char **argv, char **envp)
     if (r != 0) {
         return r;
     }
-    return _vfsexecve(f, argv, envp);
-}
-
-int _fexecve(int fd, char **argv, char **envp)
-{
-    vfs_file_t *f = __getftab(fd);
-    if (!f) {
-        return _seterror(EBADF);
-    }
-    return _vfsexecve(f, argv, envp);
-}
-
-int _vfsexecve(vfs_file_t *f, char **argv, char **envp)
-{
-    char *buf, *ptr, *topmem;
-    int sizeleft;
-    int r;
-
     // OK, now read the file contents into memory
     // we need to find unused RAM, which basically means after our stack
     // the stack pointer is obtained via

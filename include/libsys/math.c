@@ -53,10 +53,9 @@ int32_t _isin(int32_t x)
     //__builtin_printf(" [x=%08x] ", x);
     x = x<<2;  // convert to 0.32 fixed point
     cx = (1<<30);
-
     __asm {
         qrotate cx, x
-        getqy ry   // get sin y
+        getqy ry
     }
     return ry;
 }
@@ -99,27 +98,19 @@ int32_t _isin(int32_t x)
 float __builtin_sinf(float x)
 {
     float s;
-
-    // do some argument reduction
-        
-    // for small angles use the taylor series: sin(x) = x - x^3/6 (error bounded by x^5/120)
-    if (x < 0.1f && x > -0.1f) {
-        s = x - (x*x*x/6.0f);
-    } else {
-        x = x * PI_SCALE;
+    x = x * PI_SCALE;
 #ifdef __fixedreal__
-        //__builtin_printf(" [f=%f] ", x);
-        s = __asfloat(_isin(__asuint(x)) >> 14);
+    //__builtin_printf(" [f=%f] ", x);
+    s = __asfloat(_isin(__asuint(x)) >> 14);
 #else    
-        s = _isin(x) / FIXPT_ONE;
-#endif
-    }
+    s = _isin(x) / FIXPT_ONE;
+#endif    
     return s;
 }
 
 float __builtin_cosf(float x)
 {
-    return __builtin_sinf(PI_2-x);
+    return __builtin_sinf(x + PI_2);
 }
 
 float __builtin_tanf(float x)
@@ -202,14 +193,13 @@ float __builtin_atanf(float y)
     return __builtin_atan2f(y, 1.0f);
 }
 
-float __builtin_asinf(float y)
+float __builtin_asinf(float x)
 {
-    float x = __builtin_sqrt(1.0f-y*y);
-    return __builtin_atan2f(y, x);
+    float y = __builtin_sqrt(1-x*x);
+    return __builtin_atan2f(x, y);
 }
 
 float __builtin_acosf(float x)
 {
-    float y = __builtin_sqrt(1.0f-x*x);
-    return __builtin_atan2f(y, x);
+    return PI_2 - __builtin_asinf(x);
 }

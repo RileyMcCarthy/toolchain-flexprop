@@ -35,7 +35,7 @@ extern "C" {
     char * strrchr(const char *, int) _IMPL("libc/string/strrchr.c");
     size_t strspn(const char *, const char *);
     char * strstr(const char *src, const char *pattern) _IMPL("libc/string/strstr.c");
-    char * strtok(char * __restrict str, const char * __restrict delim) _IMPL("libc/string/strtok.c");
+    char * strtok(char * __restrict str, const char * __restrict delim);
 
 
     void * memset(void *dest, int c, size_t n) _IMPL("libc/string/memset.c");
@@ -60,9 +60,6 @@ extern "C" {
 #ifdef __FLEXC__
 #define strcpy(a, b) __builtin_strcpy(a, b)
 #define strlen(a)    __builtin_strlen(a)
-#define memset(a, v, n) __builtin_memset(a, v, n)
-#define memcpy(a, b, n) __builtin_memcpy(a, b, n)
-#define memmove(a, b, n) __builtin_memmove(a, b, n)
 #endif
 
 #endif
