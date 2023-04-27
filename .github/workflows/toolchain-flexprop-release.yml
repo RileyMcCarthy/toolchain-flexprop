@@ -24,15 +24,14 @@ jobs:
           submodules: recursive
       # make spin2cpp
       - name: Make targets (Windows only)
-        if: runner.os == 'Windows'
         run: msys2 -c make
       # Rename tools
       - name: Move Tools
         run: |
           mkdir ./tools
-          msys2 -c 'cp build/flexcc tools/'
-          msys2 -c 'cp build/flexspin tools/'
-          msys2 -c 'cp build/spin2cpp tools/'
+          cp build/flexcc tools/
+          cp build/flexspin tools/
+          cp build/spin2cpp tools/
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
