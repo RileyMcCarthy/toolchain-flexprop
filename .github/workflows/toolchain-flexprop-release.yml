@@ -10,12 +10,8 @@ on:
         default: ''
 jobs:
   build-win-x64:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
-      - name: Install Bison
-        uses: msys2/setup-msys2@v2
-        with:
-          install: gcc make bison
       - name: Install MinGW
         run: "sudo apt-get install gcc-mingw-w64-i686"
       # Checkout spin2cpp repo and setup environment
