@@ -9,58 +9,107 @@ on:
         required: true
         default: ''
 jobs:
-  build-multiplatform:
+  build-win-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Install Bison
+        uses: msys2/setup-msys2@v2
+        with:
+          install: gcc make bison
+        # Checkout spin2cpp repo and setup environment
+      - uses: actions/checkout@v3
+        with:
+          repository: totalspectrum/spin2cpp
+          ref: v${{ github.event.inputs.branch }}
+          submodules: recursive
+      # make spin2cpp
+      - name: Make targets (Windows only)
+        if: runner.os == 'Windows'
+        run: msys2 -c make
+      # Rename tools
+      - name: Move Tools
+        run: |
+          mkdir ./tools
+          msys2 -c 'cp build/flexcc tools/flexcc.exe'
+          msys2 -c 'cp build/flexspin tools/flexspin.exe'
+          msys2 -c 'cp build/spin2cpp tools/spin2cpp.exe'
+      # Uploading build files
+      - name: Archive results
+        uses: actions/upload-artifact@v3
+        with:
+          name: tools-${{ runner.os }}-${{ runner.arch }}
+          path: 'tools/'
+  build-linux-macos-x64:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest,ubuntu-latest,macos-latest]
+        os: [ubuntu-latest,macos-latest]
     steps:
-    - name: Install Bison
-      if: runner.os == 'Windows'
-      uses: msys2/setup-msys2@v2
-      with:
-        install: gcc make bison
-    # Checkout spin2cpp repo and setup environment
-    - uses: actions/checkout@v3
-      with:
-        repository: totalspectrum/spin2cpp
-        ref: v${{ github.event.inputs.branch }}
-        submodules: recursive
-    # make spin2cpp
-    - name: Make targets (Windows only)
-      if: runner.os == 'Windows'
-      run: msys2 -c make
-    - name: Make targets (Non-Windows)
-      if: runner.os != 'Windows'
-      run: make
-    # Create tools directory
-    - name: Make tools directory
-      run: mkdir ./tools
-    # Rename tools to .exe, .mac, and '' for windows, max, linux 
-    - if: runner.os == 'Windows'
-      run: |
-        msys2 -c 'cp build/flexcc tools/flexcc.exe'
-        msys2 -c 'cp build/flexspin tools/flexspin.exe'
-        msys2 -c 'cp build/spin2cpp tools/spin2cpp.exe'
-    - if: runner.os == 'Linux'
-      run: |
-        cp build/flexcc tools/flexcc
-        cp build/flexspin tools/flexspin
-        cp build/spin2cpp tools/spin2cpp
-        cp -R include tools/include
-    - if: runner.os == 'macOS'
-      run: |
-        cp build/flexcc tools/flexcc.mac
-        cp build/flexspin tools/flexspin.mac
-        cp build/spin2cpp tools/spin2cpp.mac
-    # Uploading build files
-    - name: Archive results
-      uses: actions/upload-artifact@v3
-      with:
-        name: tools-${{ runner.os }}
-        path: 'tools/'
+        # Checkout spin2cpp repo and setup environment
+      - uses: actions/checkout@v3
+        with:
+          repository: totalspectrum/spin2cpp
+          ref: v${{ github.event.inputs.branch }}
+          submodules: recursive
+      # make spin2cpp
+      - name: Make targets
+        run: make
+      # Rename tools
+      - name: Move Tools
+        run: |
+          mkdir ./tools
+          cp build/flexcc tools/flexcc
+          cp build/flexspin tools/flexspin
+          cp build/spin2cpp tools/spin2cpp
+      # Uploading build files
+      - name: Archive results
+        uses: actions/upload-artifact@v3
+        with:
+          name: tools-${{ runner.os }}-${{ runner.arch }}
+          path: 'tools/'
+  build-linux-armv7:
+    runs-on: ubuntu-latest
+    name: Build on ${{ matrix.distro }} ${{ matrix.arch }}
+
+    # Run steps on a matrix of 4 arch/distro combinations
+    strategy:
+      matrix:
+        include:
+          - arch: aarch64
+            distro: ubuntu-latest
+          - arch: armv7
+            distro: ubuntu-latest
+    steps:
+      # Checkout spin2cpp repo and setup environment
+      - uses: actions/checkout@v3
+        with:
+          repository: totalspectrum/spin2cpp
+          ref: v${{ github.event.inputs.branch }}
+          submodules: recursive
+      # make spin2cpp
+      - name: Make targets
+        run: make
+      # Rename tools
+      - name: Move Tools
+        run: |
+          mkdir ./tools
+          cp build/flexcc tools/flexcc${{ runner.arch }}
+          cp build/flexspin tools/flexspin${{ runner.arch }}
+          cp build/spin2cpp tools/spin2cpp${{ runner.arch }}
+      # Uploading build files
+      - name: Archive results
+        uses: actions/upload-artifact@v3
+        with:
+          name: tools-${{ runner.os }}-${{ runner.arch }}
+          path: 'tools/'
+       # Uploading include folder
+      - name: Archive include files
+        uses: actions/upload-artifact@v3
+        with:
+          name: include
+          path: 'include/'
   create-release:
-    needs: build-multiplatform
+    needs: [build-win-x64, build-linux-macos-x64, build-linux-armv7]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -100,15 +149,15 @@ jobs:
         mkdir -p 'bin'
         rm -R -f include
         cp -R artifacts/tools-Linux/include ./
-        cp artifacts/tools-Windows/flexcc.exe ./bin
-        cp artifacts/tools-Windows/flexspin.exe ./bin
-        cp artifacts/tools-Windows/spin2cpp.exe ./bin
-        cp artifacts/tools-Linux/flexcc ./bin
-        cp artifacts/tools-Linux/flexspin ./bin
-        cp artifacts/tools-Linux/spin2cpp ./bin
-        cp artifacts/tools-macOS/flexcc.mac ./bin
-        cp artifacts/tools-macOS/flexspin.mac ./bin
-        cp artifacts/tools-macOS/spin2cpp.mac ./bin
+        cp artifacts/tools-Windows-X64/flexcc.exe ./bin
+        cp artifacts/tools-Windows-X64/flexspin.exe ./bin
+        cp artifacts/tools-Windows-X64/spin2cpp.exe ./bin
+        cp artifacts/tools-Linux-X64/flexcc ./bin
+        cp artifacts/tools-Linux-X64/flexspin ./bin
+        cp artifacts/tools-Linux-X64/spin2cpp ./bin
+        cp artifacts/tools-macOS-X64/flexcc.mac ./bin
+        cp artifacts/tools-macOS-X64/flexspin.mac ./bin
+        cp artifacts/tools-macOS-X64/spin2cpp.mac ./bin
         rm -R artifacts
     - name: Change permissions
       run: chmod a+rwx ./bin/*
