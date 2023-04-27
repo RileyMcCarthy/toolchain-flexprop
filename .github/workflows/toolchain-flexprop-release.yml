@@ -130,7 +130,7 @@ jobs:
           name: tools-Linux
           path: '${PWD}/artifacts/'
   create-release:
-    needs: [build-win-x64, build-linux-macos-x64, build-linux-armv7]
+    needs: [build-win-x64, build-x64, build-linux-arm]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
