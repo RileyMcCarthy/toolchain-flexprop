@@ -92,7 +92,7 @@ jobs:
           repository: totalspectrum/spin2cpp
           ref: v${{ github.event.inputs.branch }}
           submodules: recursive
-      - uses: uraimo/run-on-arch-action@v2
+      - uses: uraimo/run-on-arch-action@v2.5.0
         name: Build artifact
         id: build
         with:
