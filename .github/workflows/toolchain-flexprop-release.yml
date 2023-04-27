@@ -178,7 +178,7 @@ jobs:
         cp artifacts/tools-macOS-X64/flexcc ./bin/flexcc.mac
         cp artifacts/tools-macOS-X64/flexspin ./bin/flexspin.mac
         cp artifacts/tools-macOS-X64/spin2cpp ./bin/spin2cpp.mac
-        cp artifacts/tools-Linux-armv7/armv7/flexcc ./bin/flexcc.rpi
+        cp artifacts/tools-Linux-armv7/flexcc ./bin/flexcc.rpi
         cp artifacts/tools-Linux-armv7/flexspin ./bin/flexspin.rpi
         cp artifacts/tools-Linux-armv7/spin2cpp ./bin/spin2cpp.rpi
         cp artifacts/tools-Windows-X64/flexcc ./bin/flexcc.exe
