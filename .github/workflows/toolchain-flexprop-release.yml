@@ -9,6 +9,7 @@ on:
         required: true
         default: ''
 jobs:
+  
   build-win-x64:
     runs-on: ubuntu-latest
     steps:
@@ -45,6 +46,7 @@ jobs:
         with:
           name: include
           path: 'include/'
+  
   build-x64:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -73,10 +75,10 @@ jobs:
         with:
           name: tools-${{ runner.os }}-${{ runner.arch }}
           path: 'tools/'
+  
   build-linux-arm:
     runs-on: ubuntu-latest
     name: Build on ${{ matrix.distro }} ${{ matrix.arch }}
-
     # Run steps on a matrix of 4 arch/distro combinations
     strategy:
       matrix:
@@ -96,29 +98,22 @@ jobs:
         with:
           arch: ${{ matrix.arch }}
           distro: ${{ matrix.distro }}
-
           # Not required, but speeds up builds
           githubToken: ${{ github.token }}
-          
           # Create an artifacts directory
           setup: |
-            mkdir -p "${PWD}/artifacts/"
-            mkdir -p "${PWD}/artifacts/${{ matrix.arch }}"
-
+            mkdir -p "./artifacts/"
+            mkdir -p "./artifacts/${{ matrix.arch }}"
           # Mount the artifacts directory as /artifacts in the container
           dockerRunArgs: |
-            --volume "${PWD}/artifacts:/artifacts"
-
+            --volume "./artifacts:/artifacts"
         # The shell to run commands with in the container
           shell: /bin/sh
-        
           install: |
            apt-get update -q -y
            apt-get install -q -y git
            apt-get install -q -y flex bison
            apt-get install -q -y build-essential
-          
-        # make spin2cpp
           run: |
             git config --global --add safe.directory ${PWD}
             make
@@ -130,7 +125,8 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: tools-Linux
-          path: '${PWD}/artifacts/'
+          path: './artifacts/'
+  
   create-release:
     needs: [build-win-x64, build-x64, build-linux-arm]
     runs-on: ubuntu-latest
@@ -138,15 +134,12 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
-    
     - name: Create artifact dir
       run: mkdir -p ./artifacts
-    
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
         path: ./artifacts
-    
     - name: Update platformio package.json
       run: >
         echo '
