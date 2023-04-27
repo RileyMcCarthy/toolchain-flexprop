@@ -114,7 +114,7 @@ jobs:
         
           install: |
            apt-get update -q -y
-           apt-get install -q -y flex
+           apt-get install -q -y flex bison
            apt-get install -q -y build-essential
           
         # make spin2cpp
