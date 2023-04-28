@@ -12,10 +12,15 @@ jobs:
   
   build-win-rpi:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [win32,rpi]
     steps:
       - name: Install MinGW
+        if: matrix.os == 'win32'
         run: "sudo apt-get install gcc-mingw-w64-i686"
       - name: Install arm GCC
+        if: matrix.os == 'rpi'
         run: "sudo apt install gcc-arm-linux-gnueabihf"
       # Checkout spin2cpp repo and setup environment
       - uses: actions/checkout@v3
@@ -25,21 +30,20 @@ jobs:
           submodules: recursive
       # make spin2cpp
       - name: Make targets
+        run: make CROSS= ${{ matrix.os }}
+      # Moves files
+      - name: Move Files
         run: |
-          make CROSS=win32
-          make CROSS=rpi
+          mkdir ./tools
+          cp build-${{ matrix.os }}/flexcc* ./tools/flexcc
+          cp build-${{ matrix.os }}/flexspin* ./tools/flexspin
+          cp build-${{ matrix.os }}/spin2cpp* ./tools/spin2cpp
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
         with:
-          name: tools-rpi
-          path: "build-win32/"
-    # Uploading build files
-      - name: Archive results
-        uses: actions/upload-artifact@v3
-        with:
-          name: tools-Windows
-          path: "build-rpi/"
+          name: tools-${{ matrix.os }}
+          path: "tools/"
      # Uploading include folder
       - name: Archive include files
         uses: actions/upload-artifact@v3
