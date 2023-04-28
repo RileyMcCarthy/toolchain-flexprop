@@ -30,7 +30,7 @@ jobs:
           submodules: recursive
       # make spin2cpp
       - name: Make targets
-        run: make CROSS= ${{ matrix.os }}
+        run: make CROSS=${{ matrix.os }}
       # Moves files
       - name: Move Files
         run: |
