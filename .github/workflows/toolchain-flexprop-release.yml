@@ -32,10 +32,14 @@ jobs:
       - name: Archive results
         uses: actions/upload-artifact@v3
         with:
-          name: tools
-          path: |
-            './build-win32/'
-            './build-rpi/'
+          name: tools-rpi
+          path: "build-win32/"
+    # Uploading build files
+      - name: Archive results
+        uses: actions/upload-artifact@v3
+        with:
+          name: tools-Windows
+          path: "build-rpi/"
      # Uploading include folder
       - name: Archive include files
         uses: actions/upload-artifact@v3
