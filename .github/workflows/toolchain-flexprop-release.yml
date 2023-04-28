@@ -10,52 +10,13 @@ on:
         default: ''
 jobs:
   
-  build-win-x64:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install MinGW
-        run: "sudo apt-get install gcc-mingw-w64-i686"
-      # Checkout spin2cpp repo and setup environment
-      - uses: actions/checkout@v3
-        with:
-          repository: totalspectrum/spin2cpp
-          ref: v${{ github.event.inputs.branch }}
-          submodules: recursive
-      # make spin2cpp
-      - name: Make targets (Windows only)
-        run: |
-          make flexcc.exe
-          make flexspin.exe
-          make spin2cpp.exe
-      # Rename tools
-      - name: Move Tools
-        run: |
-          mkdir ./tools
-          cp build-win32/flexcc.exe tools/flexcc
-          cp build-win32/flexspin.exe tools/flexspin
-          cp build-win32/spin2cpp.exe tools/spin2cpp
-      # Uploading build files
-      - name: Archive results
-        uses: actions/upload-artifact@v3
-        with:
-          name: tools-Windows-${{ runner.arch }}
-          path: 'tools/'
-     # Uploading include folder
-      - name: Archive include files
-        uses: actions/upload-artifact@v3
-        with:
-          name: include
-          path: 'include/'
-  
-  build-rpi-x64:
+  build-win-rpi:
     runs-on: ubuntu-latest
     steps:
       - name: Install MinGW
         run: "sudo apt-get install gcc-mingw-w64-i686"
       - name: Install arm GCC
         run: "sudo apt install gcc-arm-linux-gnueabihf"
-      - name: Install macos GCC
-        run: "sudo apt-get install o64-clang"
       # Checkout spin2cpp repo and setup environment
       - uses: actions/checkout@v3
         with:
@@ -67,8 +28,6 @@ jobs:
         run: |
           make CROSS=win32
           make CROSS=rpi
-          make CROSS=macosx
-          make CROSS=linux32
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v3
@@ -76,8 +35,6 @@ jobs:
           name: tools
           path: |
             './build-win32'
-            './build-linux32'
-            './build-macosx'
             './build-rpi'
      # Uploading include folder
       - name: Archive include files
@@ -86,7 +43,7 @@ jobs:
           name: include
           path: 'include/'
   
-  build-x64:
+  build-linux-macos:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -114,63 +71,9 @@ jobs:
         with:
           name: tools-${{ runner.os }}-${{ runner.arch }}
           path: 'tools/'
-  
-  build-linux-arm:
-    runs-on: ubuntu-latest
-    name: Build on ${{ matrix.distro }} ${{ matrix.arch }}
-    # Run steps on a matrix of 4 arch/distro combinations
-    strategy:
-      matrix:
-        include:
-          - arch: armv7
-            distro: ubuntu_latest
-    steps:
-      # Checkout spin2cpp repo and setup environment
-      - uses: actions/checkout@v3
-        with:
-          repository: totalspectrum/spin2cpp
-          ref: v${{ github.event.inputs.branch }}
-          submodules: recursive
-      - uses: uraimo/run-on-arch-action@v2.5.0
-        name: Build artifact
-        id: build
-        with:
-          arch: ${{ matrix.arch }}
-          distro: ${{ matrix.distro }}
-          # Not required, but speeds up builds
-          githubToken: ${{ github.token }}
-          # Create an artifacts directory
-          setup: |
-            mkdir -p "${{ github.workspace }}/artifacts/"
-            mkdir -p "${{ github.workspace }}/artifacts"
-          # Mount the artifacts directory as /artifacts in the container
-          dockerRunArgs: |
-            --volume "${{ github.workspace }}/artifacts:/artifacts"
-        # The shell to run commands with in the container
-          shell: /bin/sh
-          install: |
-           apt-get update -q -y
-           apt-get install -q -y git
-           apt-get install -q -y flex bison
-           apt-get install -q -y build-essential
-          run: |
-            git config --global --add safe.directory ${PWD}
-            make
-            cp build/flexcc artifacts/flexcc
-            cp build/flexspin artifacts/flexspin
-            cp build/spin2cpp artifacts/spin2cpp
-      - name: view archive
-        run: |
-          ls artifacts/   
-      # Uploading build files
-      - name: Archive results
-        uses: actions/upload-artifact@v3
-        with:
-          name: tools-Linux-${{ matrix.arch }}
-          path: './artifacts/*'
-  
+
   create-release:
-    needs: [build-win-x64, build-x64, build-linux-arm]
+    needs: [build-win-rpi, build-linux-macos]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
