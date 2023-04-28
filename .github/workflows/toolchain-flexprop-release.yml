@@ -34,8 +34,8 @@ jobs:
         with:
           name: tools
           path: |
-            './build-win32'
-            './build-rpi'
+            './build-win32/'
+            './build-rpi/'
      # Uploading include folder
       - name: Archive include files
         uses: actions/upload-artifact@v3
