@@ -11,10 +11,7 @@ extern "C" {
 #endif
 
 typedef unsigned int clock_t;
-#ifndef __FLEXC__    
 extern clock_t __clkfreq_var;
-#endif
-
 /* the actual frequency the machine is running at may vary */
 #define CLOCKS_PER_SEC __clkfreq_var
 #define CLK_TCK __clkfreq_var
@@ -56,14 +53,13 @@ struct tm {
     struct tm *localtime(const time_t *) _IMPL("libc/time/localtim.c");
 #define localtime_r _localtime_r
 #define gmtime_r    _gmtime_r
-    int _gettimezone(void) _IMPL("libc/time/localtim.c");
     
-    __SIZE_TYPE__ strftime(char *s, __SIZE_TYPE__ max, const char *format, const struct tm *stm) _STRINGIO _IMPL("libc/time/strftime.c");
+    __SIZE_TYPE__ strftime(char *s, __SIZE_TYPE__ max, const char *format, const struct tm *tm) _IMPL("libc/time/strftime.c");
 
-    char *asctime(const struct tm *stm) _STRINGIO _IMPL("libc/time/asctime.c");
-    char *asctime_r(const struct tm *stm, char *buf) _STRINGIO _IMPL("libc/time/asctime.c");
-    char *ctime(const time_t *timep) _STRINGIO _IMPL("libc/time/asctime.c");
-    char *ctime_r(const time_t *timep, char *buf) _STRINGIO _IMPL("libc/time/asctime.c");
+    char *asctime(const struct tm *stm) _IMPL("libc/time/asctime.c");
+    char *asctime_r(const struct tm *stm, char *buf) _IMPL("libc/time/asctime.c");
+    char *ctime(const time_t *timep) _IMPL("libc/time/asctime.c");
+    char *ctime_r(const time_t *timep, char *buf) _IMPL("libc/time/asctime.c");
 
 #if defined(_POSIX_SOURCE) || defined(_GNU_SOURCE)
     struct tm *gmtime_r(const time_t *t, struct tm *stm) _IMPL("libc/time/localtim.c");

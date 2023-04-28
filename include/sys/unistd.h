@@ -21,7 +21,7 @@ extern "C" {
     
   typedef unsigned int useconds_t;
 
-  int open(const char *name, int flags, mode_t mode) _COMPLEXIO _IMPL("libc/unix/posixio.c");
+  int open(const char *name, int flags, mode_t mode) _IMPL("libc/unix/posixio.c");
   int write(int fd, const void *buf, int count) _IMPL("libc/unix/posixio.c");
   int read(int fd, void *buf, int count) _IMPL("libc/unix/posixio.c");
   int close(int fd) _IMPL("libc/unix/posixio.c");
@@ -37,12 +37,12 @@ extern "C" {
 
   int isatty(int fd) _IMPL("libc/unix/isatty.c");
 
-  char *getcwd(char *buf, int size) _COMPLEXIO _IMPL("libc/unix/_mount.c");
-  int chdir(const char *path) _COMPLEXIO _IMPL("libc/unix/_mount.c");
-  int rmdir(const char *path) _COMPLEXIO _IMPL("libc/unix/posixio.c");
-  int mkdir(const char *path, int mode) _COMPLEXIO _IMPL("libc/unix/posixio.c");
+  char *getcwd(char *buf, int size) _IMPL("libc/unix/mount.c");
+  int chdir(const char *path) _IMPL("libc/unix/mount.c");
+  int rmdir(const char *path) _IMPL("libc/unix/posixio.c");
+  int mkdir(const char *path, int mode) _IMPL("libc/unix/posixio.c");
 
-  int unlink(const char *path) _COMPLEXIO _IMPL("libc/unix/posixio.c");
+  int unlink(const char *path) _IMPL("libc/unix/posixio.c");
   int chown(const char *pathname, uid_t owner, gid_t group) _IMPL("libc/unix/posixio.c");
   int chmod(const char *pathname, mode_t mode) _IMPL("libc/unix/posixio.c");
     
@@ -52,14 +52,13 @@ extern "C" {
   char *_mktemp(char *templ);
   char *mktemp(char *);
 
-  const char **_get_environ_ptr() _IMPL("libc/stdlib/getenv.c");
-  void _put_environ_ptr(const char **ptr) _IMPL("libc/stdlib/getenv.c");
-#define environ _get_environ_ptr()
+    extern char **_environ_ptr;
+#define environ _environ_ptr    
 #define getuid() (0)
 #define getgid() (0)
 #define getpid() (1)
     
-    int _execve(const char *path, char **args, char **env) _COMPLEXIO _IMPL("libc/unix/exec.c");
+  int _execve(const char *path, char **args, char **env) _IMPL("libc/unix/exec.c");
 
 #if defined(__cplusplus)
 }

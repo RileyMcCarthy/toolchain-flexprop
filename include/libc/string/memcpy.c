@@ -9,8 +9,6 @@
 #include <string.h>
 #include <compiler.h>
 
-#undef memcpy
-
 #define ALIGNED(a) ( 0 == ( ((unsigned)(a)) & (sizeof(long)-1) ) )
 #define HUBMEM(a)  ( 0 == ( ((unsigned)(a)) & 0xFFF00000 ) )
 
