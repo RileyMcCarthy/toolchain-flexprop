@@ -51,10 +51,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install MinGW
-        run: |
-          "sudo apt-get install gcc-mingw-w64-i686"
-          "sudo apt-get install arm-linux-gnueabihf-gcc"
-          "sudo apt-get install o64-clang"
+        run: "sudo apt-get install gcc-mingw-w64-i686"
+      - name: Install arm GCC
+        run: "sudo apt install gcc-arm-linux-gnueabihf"
+      - name: Install macos GCC
+        run: "sudo apt-get install o64-clang"
       # Checkout spin2cpp repo and setup environment
       - uses: actions/checkout@v3
         with:
