@@ -77,7 +77,7 @@ jobs:
       - name: Archive results
         uses: actions/upload-artifact@v3
         with:
-          name: tools-${{ runner.os }}-${{ runner.arch }}
+          name: tools-${{ runner.os }}
           path: 'tools/'
 
   create-release:
@@ -122,18 +122,18 @@ jobs:
         mkdir -p 'bin'
         rm -R -f include
         cp -R artifacts/include ./
-        cp artifacts/tools-Linux-X64/flexcc ./bin/flexcc
-        cp artifacts/tools-Linux-X64/flexspin ./bin/flexspin
-        cp artifacts/tools-Linux-X64/spin2cpp ./bin/spin2cpp
-        cp artifacts/tools-macOS-X64/flexcc ./bin/flexcc.mac
-        cp artifacts/tools-macOS-X64/flexspin ./bin/flexspin.mac
-        cp artifacts/tools-macOS-X64/spin2cpp ./bin/spin2cpp.mac
-        cp artifacts/tools-Linux-armv7/flexcc ./bin/flexcc.rpi
-        cp artifacts/tools-Linux-armv7/flexspin ./bin/flexspin.rpi
-        cp artifacts/tools-Linux-armv7/spin2cpp ./bin/spin2cpp.rpi
-        cp artifacts/tools-Windows-X64/flexcc ./bin/flexcc.exe
-        cp artifacts/tools-Windows-X64/flexspin ./bin/flexspin.exe
-        cp artifacts/tools-Windows-X64/spin2cpp ./bin/spin2cpp.exe
+        cp artifacts/tools-Linux/flexcc ./bin/flexcc
+        cp artifacts/tools-Linux/flexspin ./bin/flexspin
+        cp artifacts/tools-Linux/spin2cpp ./bin/spin2cpp
+        cp artifacts/tools-macOS/flexcc ./bin/flexcc.mac
+        cp artifacts/tools-macOS/flexspin ./bin/flexspin.mac
+        cp artifacts/tools-macOS/spin2cpp ./bin/spin2cpp.mac
+        cp artifacts/tools-rpi/flexcc ./bin/flexcc.rpi
+        cp artifacts/tools-rpi/flexspin ./bin/flexspin.rpi
+        cp artifacts/tools-rpi/spin2cpp ./bin/spin2cpp.rpi
+        cp artifacts/tools-win32/flexcc ./bin/flexcc.exe
+        cp artifacts/tools-win32/flexspin ./bin/flexspin.exe
+        cp artifacts/tools-win32/spin2cpp ./bin/spin2cpp.exe
         rm -R artifacts
     
     - name: Change permissions
