@@ -2,6 +2,7 @@
 #include <sys/limits.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 
@@ -75,6 +76,53 @@ struct vfs __rootvfs =
 };
 
 
+void
+_normalizeName(char *buf) {
+    char *dst, *src;
+    bool needSlash = false;
+    
+    dst = src = buf;
+    while (*src) {
+        if (needSlash) {
+            *dst++ = '/';
+            needSlash = false;
+        }
+        // special cases
+        if (src[0] == '.') {
+            if (src[1] == '/' || src[1] == 0) {
+                src++;
+                goto skipSlashes;
+            } else if (src[1] == '.') {
+                if (src[2] == '/' || src[2] == 0) {
+                    char *p;
+                    src += 2;
+                    // roll back dst
+                    if (dst > buf) {
+                        char *p = dst-1;
+                        while (*p == '/' && p > buf) --p;
+                        while (p > buf && *p != '/') {
+                            --p;
+                        }
+                        dst = p;
+                    }
+                    needSlash = true;
+                    goto skipSlashes;
+                }
+            }
+        }
+        while (*src && *src != '/') {
+            *dst++ = *src++;
+        }
+        if (*src == '/') {
+            needSlash = true;
+    skipSlashes:            
+            while (*src == '/')
+                src++;
+        }
+    }
+    *dst++ = 0;
+}
+
 struct vfs *
 __getvfsforfile(char *name, const char *orig_name, char *full_path)
 {
@@ -97,6 +145,7 @@ __getvfsforfile(char *name, const char *orig_name, char *full_path)
             strncat(name, orig_name, _PATH_MAX);
         }
     }
+    _normalizeName(name);
     if (name[0] == 0 || (name[0] == '/' && name[1] == 0) ) {
         return &__rootvfs;
     }
@@ -152,7 +201,13 @@ int _mount(char *user_name, struct vfs *v)
     
 #ifdef _DEBUG
     __builtin_printf("mount(%s, %x) called\n", user_name, (unsigned)v);
-#endif    
+#endif
+    if (!v) {
+#ifdef _DEBUG
+        __builtin_printf("ignoring NULL file system\n");
+#endif        
+        return -1;
+    }
     if (user_name[0] != '/' || strlen(user_name) > MAX_MOUNT_CHARS) {
 #ifdef _DEBUG
         __builtin_printf("mount %s: EINVAL\n", user_name);
@@ -206,7 +261,7 @@ int _mount(char *user_name, struct vfs *v)
 #ifdef _DEBUG
                 __builtin_printf("mount: init failed with error %d for %s\n", r, name);
 #endif
-                return _seterror(EIO);
+                return _seterror(-r);
             }
         }   
         mounttab[i] = name;
@@ -264,7 +319,7 @@ int _umount(char *name)
     return 0;
 }
 
-char *getcwd(char *buf, size_t size)
+char *_getcwd(char *buf, size_t size)
 {
     size_t needed = 2 + strlen(curdir);
 
@@ -280,7 +335,7 @@ char *getcwd(char *buf, size_t size)
     return buf;
 }
 
-int chdir(const char *path)
+int _chdir(const char *path)
 {
     struct stat s;
     char *tmp;

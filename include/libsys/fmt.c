@@ -7,14 +7,14 @@
 #include <errno.h>
 
 #define INCLUDE_FLOATS
-#undef SIMPLE_IO
+#undef _SIMPLE_IO
 
 #ifdef __FLEXC__
 
 #define SMALL_INT
 #define strlen __builtin_strlen
 #define strcpy __builtin_strcpy
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
 #define THROW_RETURN(err) return -1
 #else
 #define THROW_RETURN(x) do { __throwifcaught(x); return -1; } while (0)
@@ -117,10 +117,8 @@ int _fmtstr(putfunc fn, unsigned fmt, const char *str)
 
 int _fmtchar(putfunc fn, unsigned fmt, int c)
 {
-    char buf[2];
-    buf[0] = c;
-    buf[1] = 0;
-    return _fmtstr(fn, fmt, buf);
+    c &= 255;
+    return _fmtstr(fn, fmt, (char*)&c);
 }
 
 #ifdef SMALL_INT
@@ -188,7 +186,11 @@ int _uitoa(char *orig_str, UITYPE num, unsigned base, unsigned mindigits, int up
 
 int _fmtnum(putfunc fn, unsigned fmt, int x, int base)
 {
+    #ifdef __OUTPUT_ASM__
+    char *buf = __builtin_alloca(MAX_NUM_DIGITS+1);
+    #else
     char buf[MAX_NUM_DIGITS+1];
+    #endif
     char *ptr = buf;
     int width = 0;
     int mindigits = (fmt >> PREC_BIT) & PREC_MASK;
@@ -236,7 +238,11 @@ int _fmtnum(putfunc fn, unsigned fmt, int x, int base)
 
 int _fmtnumlong(putfunc fn, unsigned fmt, long long x, int base)
 {
+    #ifdef __OUTPUT_ASM__
+    char *buf = __builtin_alloca(MAX_NUM_DIGITS+1);
+    #else
     char buf[MAX_NUM_DIGITS+1];
+    #endif
     char *ptr = buf;
     int width = 0;
     int mindigits = (fmt >> PREC_BIT) & PREC_MASK;
@@ -872,10 +878,10 @@ typedef int (*RxFunc)(void);
 typedef int (*CloseFunc)(void);
 typedef int (*VFS_CloseFunc)(vfs_file_t *);
 
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
 #define _gettxfunc(h) ((void *)1)
 #define _getrxfunc(h) ((void *)1)
-# ifdef __FEATURE_MULTICOG__
+# if defined(__FEATURE_MULTICOG__) && !defined(_NO_LOCKIO)
 static int __iolock;
 int __lockio(int h)   { _lockmem(&__iolock); return 0; }
 int __unlockio(int h) { _unlockmem(&__iolock); return 0; }
@@ -919,10 +925,16 @@ static int *_getiolock(unsigned h) {
     return &v->lock;
 }
 int __lockio(unsigned h) {
-    _lockmem(_getiolock(h)); return 0;
+#ifndef _NO_LOCKIO    
+    _lockmem(_getiolock(h));
+#endif    
+    return 0;
 }
 int __unlockio(unsigned h) {
-    _unlockmem(_getiolock(h)); return 0;
+#ifndef _NO_LOCKIO
+    _unlockmem(_getiolock(h));
+#endif
+    return 0;
 }
 
 #endif
@@ -933,7 +945,7 @@ int __unlockio(unsigned h) {
 
 int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
 {
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
     THROW_RETURN(EIO);
 #else    
     struct _bas_wrap_sender *wrapper = 0;
@@ -980,7 +992,7 @@ int _basic_open(unsigned h, TxFunc sendf, RxFunc recvf, CloseFunc closef)
 
 int _basic_open_string(unsigned h, char *fname, unsigned iomode)
 {
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
     THROW_RETURN(EIO);
 #else    
     vfs_file_t *v;
@@ -1154,7 +1166,7 @@ int _basic_print_longinteger(unsigned h, long long int x, unsigned fmt, int base
 
 int _basic_get_char(unsigned h)
 {
-#ifdef SIMPLE_IO
+#ifdef _SIMPLE_IO
     return _rx();
 #else    
     RxFunc rf;
