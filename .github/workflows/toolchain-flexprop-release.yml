@@ -17,6 +17,8 @@ jobs:
       matrix:
         os: [win32,rpi]
     steps:
+      - name: Upgrade packages
+        run: sudo apt-get update
       - name: Install MinGW
         if: matrix.os == 'win32'
         run: "sudo apt-get install gcc-mingw-w64-i686"
