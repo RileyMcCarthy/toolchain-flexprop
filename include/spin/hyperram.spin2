@@ -1,0 +1,32 @@
+'
+' driver for Parallax HyperRAM memory board
+' Copyright 2023 Total Spectrum Software
+' MIT Licensed
+'
+
+' overridable constants
+CON
+BASEPIN = 32
+
+OBJ
+  h : "spin/hypermemory.spin2"
+  
+' this is not a top level object
+PUB null()
+
+PUB start()
+  h.initHyperDriver(BASEPIN, 0, -1, 0, clkfreq, 16)
+  
+PUB stop()
+  h.shutdown(0, 1)
+
+PUB write(dstExAddr,srcHubAddr,length) : r
+  return h.write(srcHubAddr, dstExAddr, length)
+
+PUB fill(dst,val,length) : r
+  return h.fillBytes(dst, val, length, 0)
+  
+PUB read(dstExAddr,srcHubAddr,length) : r
+  return h.read(srcHubAddr, dstExAddr, length)
+
+PUB sync()
