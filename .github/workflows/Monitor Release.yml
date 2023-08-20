@@ -1,0 +1,34 @@
+name: Daily Release Monitoring
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight
+
+jobs:
+  monitor-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check for New Release
+      id: check_release
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { spin2cpp } = await github.repos.getLatestRelease({owner: 'totalspectrum', repo: 'spin2cpp'});
+          console.log(spin2cpp.tag_name);
+          console.log(spin2cpp.name);
+          console.log(spin2cpp.body);
+          console.log(`::set-output name=spin2cpp_release_tag::${spin2cpp.tag_name}`);
+          echo "::set-output name=spin2cpp_release_tag::RELEASE_VERSION"
+          const { release } = await github.repos.getLatestRelease({owner: 'RileyMcCarthy', repo: 'toolchain-flexprop'});
+          console.log(release.tag_name);
+          console.log(release.name);
+          console.log(release.body);
+          console.log(`::set-output name=release_tag::${release.tag_name}`);
+          echo "::set-output name=release_tag::RELEASE_VERSION"
+          
+    - name: Release 
+      uses: ./.github/workflows/Release.yml
+      if: steps.check_release.outputs.spin2cpp_release_tag != steps.check_release.outputs.release_tag
+      with:
+        release_version: ${{ steps.check_release.outputs.spin2cpp_release_tag }}
