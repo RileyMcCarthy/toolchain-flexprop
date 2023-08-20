@@ -10,26 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check for New Release
-      id: check_release
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const { spin2cpp } = await github.repos.getLatestRelease({owner: 'totalspectrum', repo: 'spin2cpp'});
-          console.log(spin2cpp.tag_name);
-          console.log(spin2cpp.name);
-          console.log(spin2cpp.body);
-          console.log(`::set-output name=spin2cpp_release_tag::${spin2cpp.tag_name}`);
-          echo "::set-output name=spin2cpp_release_tag::RELEASE_VERSION"
-          const { release } = await github.repos.getLatestRelease({owner: 'RileyMcCarthy', repo: 'toolchain-flexprop'});
-          console.log(release.tag_name);
-          console.log(release.name);
-          console.log(release.body);
-          console.log(`::set-output name=release_tag::${release.tag_name}`);
-          echo "::set-output name=release_tag::RELEASE_VERSION"
-          
+    - name: Get latest FlexProp release
+      id: flexprop_release
+      run: |
+        release_version=$(curl -s https://api.github.com/repos/totalspectrum/spin2cpp/releases/latest | jq -r '.tag_name')
+        echo "::set-output name=release_version::$release_version"
+    - name: Get latest toolchain release
+      id: toolchain_release
+      run: |
+        release_version=$(curl -s https://api.github.com/repos/RileyMcCarthy/toolchain-flexprop/releases/latest | jq -r '.tag_name')
+        echo "::set-output name=release_version::$release_version"
     - name: Release 
       uses: ./.github/workflows/Release.yml
-      if: steps.check_release.outputs.spin2cpp_release_tag != steps.check_release.outputs.release_tag
+      if: steps.flexprop_release.outputs.release_version != steps.toolchain_release.outputs.release_version
       with:
-        release_version: ${{ steps.check_release.outputs.spin2cpp_release_tag }}
+        release_version: ${{ steps.flexprop_release.outputs.release_version }}
