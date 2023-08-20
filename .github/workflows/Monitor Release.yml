@@ -23,8 +23,8 @@ jobs:
         release_version=$(curl -s https://api.github.com/repos/RileyMcCarthy/toolchain-flexprop/releases/latest | jq -r '.tag_name')
         echo "::set-output name=release_version::$release_version"
     - name: Release 
-      uses: ./.github/workflows/toolchain-flexprop-release
+      uses: peter-evans/repository-dispatch@v2
       if: steps.flexprop_release.outputs.release_version != steps.toolchain_release.outputs.release_version
       with:
-        branch: ${{ steps.flexprop_release.outputs.release_version }}
-        secrets: inherit
+        event-type: my-event
+        client-payload: '{"branch": "${{steps.flexprop_release.outputs.release_version}}"}'
