@@ -27,3 +27,4 @@ jobs:
       if: steps.flexprop_release.outputs.release_version != steps.toolchain_release.outputs.release_version
       with:
         branch: ${{ steps.flexprop_release.outputs.release_version }}
+        secrets: inherit
