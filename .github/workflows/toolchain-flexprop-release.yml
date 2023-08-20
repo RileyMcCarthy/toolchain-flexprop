@@ -2,17 +2,18 @@ name: toolchain-flexprop
 permissions:
   contents: write
 on:
+  repository_dispatch:
+    types: [my-event]
+    inputs:
+      branch:
+        required: true
+        default: ''
   workflow_dispatch:
     inputs:
       branch:
         description: 'Branch to create release from'     
         required: true
         default: ''
-  workflow_call:
-    inputs:
-      branch:
-        required: true
-        type: string
 jobs:
   
   build-win-rpi:
