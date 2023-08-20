@@ -8,6 +8,11 @@ on:
         description: 'Branch to create release from'     
         required: true
         default: ''
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
 jobs:
   
   build-win-rpi:
