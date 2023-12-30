@@ -72,12 +72,15 @@ char *gets(char *data) _IMPL("libc/stdio/gets.c");
 char *fgets(char *buf, int size, FILE *f) _COMPLEXIO _IMPL("libc/stdio/fgets.c");
 
 FILE *fopen(const char *name, const char *mode) _COMPLEXIO _IMPL("libc/stdio/fopen.c");
+FILE *freopen(const char *name, const char *mode, FILE *stream) _COMPLEXIO _IMPL("libc/stdio/fopen.c");
 FILE *__string_file(_STRING_FILE *fp, const char *str, const char *mode, size_t len) _STRINGIO _IMPL("libc/stdio/stringio.c");
 
 int fclose(FILE *f) _COMPLEXIO _IMPL("libc/stdio/fopen.c");
 int fflush(FILE *f) _COMPLEXIO _IMPL("libc/stdio/fflush.c");
 size_t fwrite(const void *ptr, size_t size, size_t n, FILE *f) _COMPLEXIO _IMPL("libc/stdio/fwrite.c");
 size_t fread(void *ptr, size_t size, size_t n, FILE *f) _COMPLEXIO _IMPL("libc/stdio/fwrite.c");
+
+int setvbuf(FILE *f, char *buf, int mode, size_t size) _IMPL("libc/stdio/setvbuf.c");
 
 void clearerr(FILE *f) _IMPL("libc/stdio/clearerr.c");
 void perror(const char *s) _IMPL("libc/stdio/perror.c");
@@ -86,6 +89,7 @@ int fileno(FILE *f) _IMPL("libc/stdio/fileno.c");
 
 int  fseek(FILE *f, long offset, int whence) _IMPL("libc/stdio/fseek.c");
 long ftell(FILE *f)                          _IMPL("libc/stdio/fseek.c");
+void rewind(FILE *f)                         _IMPL("libc/stdio/fseek.c");
 
 int remove(const char *pathname) _IMPL("libsys/remove.c");
 
@@ -98,5 +102,8 @@ int remove(const char *pathname) _IMPL("libsys/remove.c");
 #define ferror(f) (0 != ((f)->state & _VFS_STATE_ERR))
 
 int rename(const char *oldpath, const char *newpath) _IMPL("libc/unix/rename.c");
+
+char *tmpnam(char *s) _IMPL("libc/stdio/tmpnam.c");
+FILE *tmpfile(void) _IMPL("libc/stdio/tmpfile.c");
 
 #endif

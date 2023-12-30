@@ -37,8 +37,14 @@
 #include <string.h>
 
 #ifdef __FLEXC__
+# ifdef __FEATURE_FLOATS__
+#  define FLOAT_SUPPORT
+# endif
+# define LONG_LONG_SUPPORT
+# define LDOUBLE double
 #else
 #define LONG_LONG_SUPPORT
+#define LDOUBLE long double
 #endif
 
 #ifdef LONG_LONG_SUPPORT
@@ -53,6 +59,10 @@ typedef signed long   SLongLong;
 #define MIN(x,y) ((x)<(y)?(x):(y))
 
 #define WCHAR_SUBTYPE 'l'
+
+#ifndef _NAN
+#define _NAN __builtin_nan("")
+#endif
 
 /*
  * define FLOAT_SUPPORT to get floating point support
@@ -88,41 +98,7 @@ mygetc(FILE *stream, MyState *ms)
   return mbc;
 }
 
-static int in_scanset(int c, const unsigned char *scanset);
-
-/* get a single character from stream; this may be
- * multiple bytes depending on locale
- * c is the first byte of the character
- * returns the last byte read, or EOF
- * "scanset" is a set we should check; if any byte read is not in the
- * scanset abort
- */
-static int
-mywgetc(int c, wchar_t *wc_ptr, FILE *stream, MyState *ms, const unsigned char *scanset, int *scan_check)
-{
-  size_t count;
-
-  ms->mbs.left = 0;
-  *scan_check = 1;
-  do {
-    if (c < 0 || !in_scanset(c, scanset)) {
-      *scan_check = 0;
-      return c;
-    }
-    /* NOTE: assumes c is little-endian here */
-    count = mbrtowc(wc_ptr, (char *)&c, 1, &ms->mbs);
-    if (count != ((size_t)-2)) break;
-    /* need more bytes */
-    c = fgetc(stream);
-    ms->incount++;
-  } while (1);
-  if (count == (size_t)-1) {
-    /* this is harsh, but makes us pass the compatiblity test */
-    *wc_ptr = 0;
-    return EOF;
-  }
-  return c;
-}
+//static int in_scanset(int c, const unsigned char *scanset);
 
 static void
 myungetc(int c, FILE *stream, MyState *ms)
@@ -165,6 +141,40 @@ in_scanset(int c, const unsigned char *scanset)
     last = wc;
   }
   return !inset;
+}
+
+/* get a single character from stream; this may be
+ * multiple bytes depending on locale
+ * c is the first byte of the character
+ * returns the last byte read, or EOF
+ * "scanset" is a set we should check; if any byte read is not in the
+ * scanset abort
+ */
+static int
+mywgetc(int c, wchar_t *wc_ptr, FILE *stream, MyState *ms, const unsigned char *scanset, int *scan_check)
+{
+  size_t count;
+
+  ms->mbs.left = 0;
+  *scan_check = 1;
+  do {
+    if (c < 0 || !in_scanset(c, scanset)) {
+      *scan_check = 0;
+      return c;
+    }
+    /* NOTE: assumes c is little-endian here */
+    count = mbrtowc(wc_ptr, (char *)&c, 1, &ms->mbs);
+    if (count != ((size_t)-2)) break;
+    /* need more bytes */
+    c = fgetc(stream);
+    ms->incount++;
+  } while (1);
+  if (count == (size_t)-1) {
+    /* this is harsh, but makes us pass the compatiblity test */
+    *wc_ptr = 0;
+    return EOF;
+  }
+  return c;
 }
 
 /*
@@ -340,7 +350,7 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 	    case 'e':
 	    case 'f':
 	    case 'g':
-	      { long double v;
+	      { LDOUBLE v;
 		int ex=0;
 		int min=0,mine=0; /* This is a workaround for gcc 2.3.3: should be char */
 		
@@ -385,7 +395,7 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 		      }
 
 		    if(VAL(c=='.'))
-		      { long double dp=0.1;
+		      { LDOUBLE dp=0.1;
 			NEXT(c);
 			while(VAL(isdigit(c)))
 			  { v=v+dp*(c-'0');
@@ -440,7 +450,7 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 		  { switch(subtype)
 		      {
 		      case 'L':
-			*va_arg(args,long double*)=v;
+			*va_arg(args,LDOUBLE*)=v;
 			break;
 		      case 'l':
 			*va_arg(args,double *)=v;

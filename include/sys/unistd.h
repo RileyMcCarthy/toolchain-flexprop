@@ -1,5 +1,6 @@
 #ifndef _SYS_UNISTD_H
 #define _SYS_UNISTD_H
+#pragma once
 
 #include <sys/types.h>
 #include <compiler.h>
@@ -28,6 +29,8 @@ extern "C" {
   off_t lseek(int fd, off_t offset, int whence) _IMPL("libc/unix/posixio.c");
   int ioctl(int fd, unsigned long req, void *argp) _IMPL("libc/unix/ioctl.c");
   int access(const char *path, int mode) _IMPL("libc/unix/access.c");
+
+  int _ioctl(vfs_file_t *f, unsigned long req, void *argp) _IMPL("libc/unix/ioctl.c");
     
   /* access mode bits */
 #define F_OK (0)
@@ -36,6 +39,7 @@ extern "C" {
 #define X_OK (1)
 
   int isatty(int fd) _IMPL("libc/unix/isatty.c");
+  int _isatty(vfs_file_t *f) _IMPL("libc/unix/isatty.c");
 
   char *getcwd(char *buf, int size) _COMPLEXIO _IMPL("libc/unix/mount.c");
   int chdir(const char *path) _COMPLEXIO _IMPL("libc/unix/mount.c");
@@ -49,8 +53,8 @@ extern "C" {
   unsigned int sleep(unsigned int seconds) _IMPL("libc/time/sleep.c");
   int usleep(useconds_t usec) _IMPL("libc/time/usleep.c");
 
-  char *_mktemp(char *templ);
-  char *mktemp(char *);
+  char *_mktemp(char *templ) _IMPL("libc/misc/mktemp.c");
+  char *mktemp(char *) _IMPL("libc/misc/mktemp.c");
 
   const char **_get_environ_ptr() _IMPL("libc/stdlib/getenv.c");
   void _put_environ_ptr(const char **ptr) _IMPL("libc/stdlib/getenv.c");
@@ -59,8 +63,9 @@ extern "C" {
 #define getgid() (0)
 #define getpid() (1)
     
-    int _execve(const char *path, char **args, char **env) _COMPLEXIO _IMPL("libc/unix/exec.c");
-
+  int _execve(const char *path, char **args, char **env) _COMPLEXIO _IMPL("libc/unix/exec.c");
+  int _execl(const char *path, const char *arg0, ...) _COMPLEXIO _IMPL("libc/unix/execl.c");
+    
 #if defined(__cplusplus)
 }
 #endif

@@ -51,6 +51,9 @@ struct vfs *_vfs_open_host(void) _IMPL("filesys/fs9p/fs9p_vfs.c");
 struct vfs *_vfs_open_sdcard(void) _IMPL("filesys/fatfs/fatfs_vfs.c");
 struct vfs *_vfs_open_sdcardx(int pclk = 61, int pss = 60, int pdi = 59, int pdo = 58) _IMPL("filesys/fatfs/fatfs_vfs.c");
 
+struct vfs *_vfs_open_parallaxfs(void) _IMPL("filesys/parallax/parallaxfs_vfs.c");
+int _mkfs_parallaxfs(void) _IMPL("filesys/parallax/parallaxfs_vfs.c");
+
 /* block read/write device */
 typedef struct block_device {
     /* functions for doing I/O */
@@ -93,14 +96,16 @@ struct _default_buffer {
     unsigned char *ptr;
     unsigned flags;
 #define _BUF_FLAGS_READING (0x01)
-#define _BUF_FLAGS_WRITING (0x02)    
-    unsigned char buf[_DEFAULT_BUFSIZ];
+#define _BUF_FLAGS_WRITING (0x02)
+    unsigned bufsiz;
+    unsigned char *bufptr;
+    unsigned char bufdata[_DEFAULT_BUFSIZ];
 };
 
 int __default_getc(vfs_file_t *f) _IMPL("libc/unix/bufio.c");
 int __default_putc(int c, vfs_file_t *f) _IMPL("libc/unix/bufio.c");
-int __default_putc_terminal(int c, vfs_file_t *f) _IMPL("libc/unix/bufio.c");
 int __default_flush(vfs_file_t *f) _IMPL("libc/unix/bufio.c");
+int __default_buffer_init(vfs_file_t *f) _IMPL("libc/unix/bufio.c");
 
 int mount(const char *user_name, void *v) _IMPL("libc/unix/mount.c");
 int umount(const char *user_name) _IMPL("libc/unix/mount.c");
@@ -108,5 +113,9 @@ int umount(const char *user_name) _IMPL("libc/unix/mount.c");
 /* directory functions */
 char *__getfilebuffer();
 struct vfs *__getvfsforfile(char *fullname, const char *orig_name, char *full_path);
+
+/* file locking */
+int __lockio(int h) _IMPL("libsys/fmt.c");
+int __unlockio(int h) _IMPL("libsys/fmt.c");
 
 #endif

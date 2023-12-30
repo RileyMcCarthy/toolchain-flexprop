@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
+#include <sys/argv.h>
 #include <propeller.h>
 #include <errno.h>
 
@@ -92,14 +93,14 @@ int _vfsexecve(vfs_file_t *f, char **argv, char **envp)
 {
     char *buf, *ptr, *topmem;
     int sizeleft;
-    int r;
+    int r, j;
 
     // OK, now read the file contents into memory
     // we need to find unused RAM, which basically means after our stack
     // the stack pointer is obtained via
     buf = (char *)__topofstack(0) + 1024;
 #ifdef __P2__
-    topmem = (char *)0x7fc000;
+    topmem = (char *)0x7c000;
 #else
     topmem = (char *)0x8000;
 #endif
@@ -114,7 +115,7 @@ int _vfsexecve(vfs_file_t *f, char **argv, char **envp)
         ptr += r;
         sizeleft -= r;
     }
-    if (sizeleft == 0) {
+    if (sizeleft <= 0) {
         // not enough RAM
         return _seterror(ENOMEM);
     }
@@ -123,6 +124,29 @@ int _vfsexecve(vfs_file_t *f, char **argv, char **envp)
         // empty file
         return _seterror(EACCES);
     }
+#ifdef __P2__    
+    // set up ARGv
+    ptr = START_ARGS;
+    *(long *)ARGV_ADDR = ARGV_MAGIC;
+    // we skip argv[0] (the program name)
+    if (argv && argv[0] && argv[1]) {
+        int n = 1;
+        int ch;
+        while (n < MAX_ARGC && argv[n]) {
+            char *src = argv[n];
+            for (j = 0; 0 != (ch = *src++) && ptr < END_ARGS-2; ptr++) {
+                *ptr = ch;
+            }
+            *ptr++ = 0;
+            n++;
+            if (ptr >= END_ARGS-1) break;
+        }
+        *ptr++ = 0;
+    }
+    *ptr = 0;
+    unsigned long *p2 = (unsigned long *)ARGV_ADDR;
+    //__builtin_printf("execv: %06x: %08x %08x\n", p2[0], p2[1], p2[2]); 
+#endif
     // OK, now copy the memory and jump to the new program
     // never returns
     __run((long *)buf, sizeleft, (void *)0);
