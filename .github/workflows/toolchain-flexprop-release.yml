@@ -32,7 +32,7 @@ jobs:
         if: matrix.os == 'rpi'
         run: "sudo apt install gcc-arm-linux-gnueabihf"
       # Checkout spin2cpp repo and setup environment
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: totalspectrum/spin2cpp
           ref: v${{ github.event.inputs.branch }}
@@ -67,7 +67,7 @@ jobs:
         os: [ubuntu-latest,macos-latest]
     steps:
         # Checkout spin2cpp repo and setup environment
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: totalspectrum/spin2cpp
           ref: v${{ github.event.inputs.branch }}
@@ -93,7 +93,7 @@ jobs:
     needs: [build-win-rpi, build-linux-macos]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - name: Create artifact dir
