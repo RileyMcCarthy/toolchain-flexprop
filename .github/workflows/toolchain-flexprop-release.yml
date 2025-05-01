@@ -11,8 +11,7 @@ on:
 jobs:
   
   build-win-rpi:
-  # Using older version of ubuntu for older glibc version need by rpi (2.31)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         os: [win32,rpi]
