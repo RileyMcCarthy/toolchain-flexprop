@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <sys/vfs.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <errno.h>
 
 #include "lfs.c"
@@ -16,67 +17,75 @@ typedef struct _buffered_lfs_file {
 } BufferedLfsFile;
 
 
-static _BlockDevice *Default_SPI_Init(unsigned offset, unsigned used_size, unsigned erase_size)
+static vfs_file_t *Default_SPI_Init(unsigned offset, unsigned used_size, unsigned erase_size)
 {
     static _SpiFlash spi;
-    static _BlockDevice blk;
-    static char read_cache[SPI_PROG_SIZE];
-    static char prog_cache[SPI_PROG_SIZE];
-    static char lookahead_cache[SPI_PROG_SIZE];
+    static vfs_file_t *handle;
 
     spi.Init(offset, used_size, erase_size);
-    blk.blk_read = &spi.Read;
-    blk.blk_write = &spi.WritePage;
-    blk.blk_erase = &spi.Erase;
-    blk.blk_sync = &spi.Sync;
 
-    blk.read_cache = read_cache;
-    blk.write_cache = prog_cache;
-    blk.lookahead_cache = lookahead_cache;
+    handle = _get_vfs_file_handle();
+    if (!handle) {
+        _seterror(ENFILE);
+        return 0;
+    }
+    handle->flags = O_RDWR;
+    handle->bufmode = _IONBF;
+    handle->state = _VFS_STATE_INUSE | _VFS_STATE_WROK | _VFS_STATE_RDOK;
     
-    return &blk;
+    handle->read = &spi.v_read;
+    handle->write = &spi.v_write;
+    handle->lseek = (void *)&spi.v_lseek; /* cast to fix a warning */
+    handle->ioctl = &spi.v_ioctl;
+    handle->flush = &spi.v_flush;
+#ifdef _DEBUG_LFS
+    __builtin_printf("Default_SPI_Init gives: %x\n", handle);
+#endif
+    return handle;
 }
 
 
 static int _flash_read(const struct lfs_config *cfg, lfs_block_t block, lfs_off_t off, void *buffer, lfs_size_t size) {
-    _BlockDevice *blk = (_BlockDevice *)cfg->context;
+    vfs_file_t *handle = (vfs_file_t *)cfg->context;
     unsigned long flashAdr = block * cfg->block_size + off;
-    blk->blk_read(buffer, flashAdr, size);
+    
+    handle->lseek(handle, (off_t)flashAdr, 0);
+    handle->read(handle, buffer, size);
     return 0;
 }
 
 static int _flash_prog(const struct lfs_config *cfg, lfs_block_t block, lfs_off_t off, void *buffer_orig, lfs_size_t size) {
-    _BlockDevice *blk = (_BlockDevice *)cfg->context;
+    vfs_file_t *handle = (vfs_file_t *)cfg->context;
+    unsigned flashAdr = block * cfg->block_size + off;
     char *buffer = buffer_orig;
-    unsigned long flashAdr = block * cfg->block_size + off;
     unsigned PAGE_SIZE = cfg->prog_size;
     unsigned PAGE_MASK = PAGE_SIZE-1; // assumes PAGE_SIZE is a power of 2
 
 #ifdef _DEBUG_LFS
-    __builtin_printf(" *** flash_prog: block=%d flashAdr=%x size=%x\n", block, flashAdr, size);
+    __builtin_printf(" *** flash_prog: block=%d off=%x size=%x\n", block, off, size);
 #endif        
-    // make sure size and address are page multiples
-    if ( (flashAdr & PAGE_MASK) || (size & PAGE_MASK) ) {
+    // make sure size is a page multiple
+    if ( size % PAGE_SIZE ) {
 #ifdef _DEBUG_LFS
-    __builtin_printf(" *** flash_prog: EINVAL\n");
+    __builtin_printf(" *** flash_prog: bad size EINVAL\n");
 #endif        
         return -EINVAL;
     }
-    while (size > 0) {
-        blk->blk_write(buffer, flashAdr);
-        buffer += PAGE_SIZE;
-        flashAdr += PAGE_SIZE;
-        size -= PAGE_SIZE;
-    }
+#ifdef _DEBUG_LFS
+    __builtin_printf(" *** flash_prog: write %u bytes to %u\n", size, flashAdr);
+#endif        
+    handle->lseek(handle, (off_t)flashAdr, 0);
+    handle->write(handle, buffer, size);
     return 0;
 }
 
 static int _flash_erase(const struct lfs_config *cfg, lfs_block_t block) {
-    _BlockDevice *blk = (_BlockDevice *)cfg->context;
+    vfs_file_t *handle = (vfs_file_t *)cfg->context;
     unsigned long flashAdr = block * cfg->block_size;
-
+    unsigned size = cfg->block_size;
+    
 #ifdef _DEBUG_LFS
-    __builtin_printf(" *** flash_erase: flashAdr=0x%x\n", flashAdr);
+    __builtin_printf(" *** flash_erase: block=0x%x\n", block);
 #endif        
     // check if erase is valid
     if (block >= cfg->block_count) {
@@ -85,23 +94,56 @@ static int _flash_erase(const struct lfs_config *cfg, lfs_block_t block) {
 #endif        
         return -1;
     }
-    blk->blk_erase(flashAdr);
+    struct _blkio_info block_info = {
+        .addr = flashAdr,
+        .size = size
+    };
+    // try erasing first
+#ifdef _DEBUG_LFS
+    __builtin_printf(" ... handle->ioctl: %x %x\n", handle, handle->ioctl);
+#endif    
+    if (handle->ioctl(handle, BLKIOCTLERASE, &block_info) == 0) {
+#ifdef _DEBUG_LFS
+        __builtin_printf(" *** flash_erase: fast erase worked\n");
+#endif        
+        return 0;
+    }
+    // write FF here
+#ifdef _DEBUG_LFS
+    __builtin_printf(" *** flash_erase: slow erase path\n");
+#endif        
+    unsigned char buf[256];
+    unsigned chunk;
+    memset(buf, 0xff, sizeof(buf));
+    handle->lseek(handle, (off_t)flashAdr, 0);
+    while (size > 0) {
+        chunk = (size < sizeof(buf)) ? size : sizeof(buf);
+        handle->write(handle, buf, chunk);
+        size -= chunk;
+    }
     return 0;
 }
 
 static int _flash_sync(const struct lfs_config *cfg) {
-    _BlockDevice *blk = (_BlockDevice *)cfg->context;
-    return blk->blk_sync();
+    vfs_file_t *handle = (vfs_file_t *)cfg->context;
+    return handle->flush(handle);
 }
 
 static int _flash_create(struct lfs_config *cfg, struct littlefs_flash_config *flashcfg)
 {
-    _BlockDevice *blk = flashcfg->dev;
+    vfs_file_t *handle = flashcfg->handle;
+    static bool default_cache_used = false;
+    static char read_cache[SPI_PROG_SIZE];
+    static char prog_cache[SPI_PROG_SIZE];
+    static char lookahead_cache[SPI_PROG_SIZE];
 
-    if (!blk) {
-        blk = Default_SPI_Init(flashcfg->offset, flashcfg->used_size, flashcfg->erase_size);
+    if (!handle) {
+        handle = Default_SPI_Init(flashcfg->offset, flashcfg->used_size, flashcfg->erase_size);
     }
-    cfg->context = (void *)blk;
+#ifdef _DEBUG_LFS
+    __builtin_printf("_flash_create: handle to use=%x\n", handle);
+#endif    
+    cfg->context = (void *)handle;
     
     if (flashcfg->page_size != SPI_PROG_SIZE) {
         return -EINVAL;
@@ -123,10 +165,18 @@ static int _flash_create(struct lfs_config *cfg, struct littlefs_flash_config *f
     cfg->block_cycles = 400;
 
     // buffers
-    cfg->read_buffer = blk->read_cache;
-    cfg->prog_buffer = blk->write_cache;
-    cfg->lookahead_buffer = blk->lookahead_cache;
-    
+    if (default_cache_used) {
+        // dynamically allocate more memory
+        int blksize = SPI_PROG_SIZE;
+        cfg->read_buffer = malloc(blksize);
+        cfg->prog_buffer = malloc(blksize);
+        cfg->lookahead_buffer = malloc(blksize);
+    } else {
+        cfg->read_buffer = read_cache;
+        cfg->prog_buffer = prog_cache;
+        cfg->lookahead_buffer = lookahead_cache;
+        default_cache_used = true;
+    }
     // set up block device operations
     cfg->read = _flash_read;
     cfg->prog = _flash_prog;
@@ -335,12 +385,12 @@ static off_t v_lseek(vfs_file_t *fil, off_t offset, int whence)
     int r;
     
 #ifdef _DEBUG_LFS
-    __builtin_printf("v_lseek(%d, %d) ", offset, whence);
+    __builtin_printf("v_lseek(%ld, %d) ", (long)offset, whence);
 #endif
     if (!f) {
         return _seterror(EBADF);
     }
-    r = lfs_file_seek(&lfs, &f->fd, offset, whence);
+    r = lfs_file_seek(&lfs, &f->fd, (lfs_soff_t)offset, whence);
 #ifdef _DEBUG_LFS
     __builtin_printf("result=%d\n", r);
 #endif
@@ -605,6 +655,9 @@ get_vfs(struct littlefs_flash_config *fcfg, int do_format)
 
     v->init = &v_init;
     v->deinit = &v_deinit;
+
+    v->getcf = 0;
+    v->putcf = 0;
 
     v->vfs_data = &lfs;
     return v;

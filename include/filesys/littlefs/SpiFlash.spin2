@@ -23,7 +23,7 @@
 ' That would require special case handling.
 
 ' 24-Aug-2023 Modified for locked sysclock/4 by Evan Hillas, now reliable at high sysclock
-
+' 20-Oct-2024 Added file system interface functions
 
 
 CON     spi_cs = 61
@@ -54,7 +54,7 @@ VAR
     LONG g_offset
     LONG g_max_addr
     LONG g_erase_size
-
+    LONG g_pos
 
 PUB dummy() ' Dummy to avoid compiling as top
   Spi_Init()
@@ -72,6 +72,7 @@ PUB Init(start, size, erase_size)
   g_offset := start
   g_max_addr := start + size - Page_Size
   g_erase_size := erase_size
+  g_pos := 0
 
   Spi_Init()
   Spi_Cmd8(PD_Release)
@@ -90,7 +91,7 @@ PUB Erase(flashAdr) : r | cmd, size
 ' size can be 4kB or 64kB
   flashAdr += g_offset
   if flashAdr > g_max_addr
-    return
+    return 0
   size:= g_erase_size
   cmd:= Erase_4k
   if size > $1000
@@ -101,6 +102,15 @@ PUB Erase(flashAdr) : r | cmd, size
   Spi_Wait()
   return 0
 
+
+PUB EraseBlocks(blockNum, blockCount) : r | flashAdr, size
+  flashAdr := blockNum * 256
+  size := g_erase_size / 256
+  repeat while blockCount > 0
+    r := Erase(flashAdr)
+    flashAdr += g_erase_size
+    blockCount -= size
+  return r
 
 PUB WritePage(hubAdr, flashAdr) : r
 ' writes a page of 256 bytes
@@ -115,7 +125,6 @@ PUB WritePage(hubAdr, flashAdr) : r
     hubAdr+= 4
   Spi_Wait()
   return 0
-
 
 PUB Read (hubAdr, flashAdr, size) : r | data
 ' read any number of bytes
@@ -145,6 +154,9 @@ PUB Read (hubAdr, flashAdr, size) : r | data
   pinh (spi_cs)
   return 0
 
+
+PUB ReadBlocks(hubAdr, blockNum, blockCount) : r
+  r := Read(hubAdr, blockNum * 256, blockCount * 256)
 
 PUB Verify(hubAdr, flashAdr, size) : ok
 ' compare HUBRAM to flash contents, true means match
@@ -246,6 +258,60 @@ PRI Spi_Wait() | st
     st:= Spi_RdByte()
   until st & $01 == 0
   pinh (spi_cs)
+
+
+'
+' Interface to flexspin file I/O system
+'
+PUB v_flush(handle) : r
+  Sync()
+  return 0
+
+PUB v_lseek(handle, offlo, offhi, mode) : rlo, rhi
+  if mode == 0
+    ' nothing to do
+  elseif mode == 1
+    offlo += g_pos
+  else
+    return -1, -1
+  g_pos := offlo
+  return g_pos, 0
+
+PUB v_read(handle, buf, size) : r | flashAdr
+  flashAdr := g_pos
+  Read(buf, flashAdr, size)
+  g_pos += size
+  return size
+
+PUB v_write(handle, buf, size) : r | flashAdr, bytes
+  ' only write on page boundaries
+  flashAdr := g_pos
+  bytes := 0
+  if (flashAdr & $FF) <> 0
+    return -1
+  if (size & $FF) <> 0
+    return -1
+
+  repeat while size > 0
+    WritePage(buf, flashAdr)
+    flashAdr += 256
+    bytes += 256
+    buf += 256
+  g_pos += bytes
+  return bytes
+
+PUB v_ioctl(handle, req, ptr) : r | flashAdr, size
+  debug("v_ioctl: ", uhex(req))
+  if req <> $0200  ' BLKIOCTLERASE
+    debug("bad request: ", udec(req))
+    return -1
+  flashAdr := long[ptr]
+  size := long[ptr+4]
+  repeat while (size > 0)
+    Erase(flashAdr)
+    flashAdr += g_erase_size
+    size -= g_erase_size
+  return 0
 
 {
 +------------------------------------------------------------------------------------------------------------------------------+

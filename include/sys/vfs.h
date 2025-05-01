@@ -35,6 +35,9 @@ struct vfs {
 
     int (*init)(const char *mountname);
     int (*deinit)(const char *mountname);
+
+    int (*getcf)(vfs_file_t *f);
+    int (*putcf)(int c, vfs_file_t *f);
 };
 
 typedef struct vfs vfs_t;
@@ -48,25 +51,19 @@ struct vfs *_getrootvfs(void);
 void _setrootvfs(struct vfs *);
 
 struct vfs *_vfs_open_host(void) _IMPL("filesys/fs9p/fs9p_vfs.c");
+
+struct vfs *_vfs_open_fat_handle(vfs_file_t *handle) _IMPL("filesys/fatfs/fatfs_vfs.c");
+struct vfs *_vfs_open_fat_file(const char *name) _IMPL("filesys/fatfs/fatfs_vfs.c");
+
+/* legacy calls */
 struct vfs *_vfs_open_sdcard(void) _IMPL("filesys/fatfs/fatfs_vfs.c");
 struct vfs *_vfs_open_sdcardx(int pclk = 61, int pss = 60, int pdi = 59, int pdo = 58) _IMPL("filesys/fatfs/fatfs_vfs.c");
 
+/* parallax file system */
 struct vfs *_vfs_open_parallaxfs(void) _IMPL("filesys/parallax/parallaxfs_vfs.c");
 int _mkfs_parallaxfs(void) _IMPL("filesys/parallax/parallaxfs_vfs.c");
 
-/* block read/write device */
-typedef struct block_device {
-    /* functions for doing I/O */
-    int (*blk_read)(void *dst, unsigned long flashAdr, unsigned long size);
-    int (*blk_write)(void *src, unsigned long flashAdr);  // write one block
-    int (*blk_erase)(unsigned long flashAdr);             // erase one block
-    int (*blk_sync)(void);
-
-    /* buffers for the I/O */
-    char *read_cache;
-    char *write_cache;
-    char *lookahead_cache;
-} _BlockDevice;
+/* littlefs */
 
 /* structure for configuring a littlefs flash file system */
 struct littlefs_flash_config {
@@ -74,9 +71,9 @@ struct littlefs_flash_config {
     unsigned erase_size;     // size of erase blocks, typically 4K or 64K; must be a power of 2 and multiple of page_size
     unsigned offset;         // base address within flash, must be a multiple of erase_size
     unsigned used_size;      // size to be used within flash, must be a multiple of erase_size
-    _BlockDevice *dev;       // device to use for I/O (NULL for default SPI flash)
+    vfs_file_t *handle;      // device to use for I/O (NULL for default SPI flash)
     unsigned long long pinmask;        // pins used by device (0 for default)
-    unsigned reserved;    // reserved for future use (pins and whatnot)
+    unsigned reserved;       // reserved for future use (pins and whatnot)
 };
 struct vfs *_vfs_open_littlefs_flash(int do_format = 1, struct littlefs_flash_config *cfg = 0) _IMPL("filesys/littlefs/lfs_spi_vfs.c");
 int _mkfs_littlefs_flash(struct littlefs_flash_config *cfg = 0) _IMPL("filesys/littlefs/lfs_spi_vfs.c");
@@ -94,9 +91,6 @@ int _mkfs_littlefs_flash(struct littlefs_flash_config *cfg = 0) _IMPL("filesys/l
 struct _default_buffer {
     int cnt;
     unsigned char *ptr;
-    unsigned flags;
-#define _BUF_FLAGS_READING (0x01)
-#define _BUF_FLAGS_WRITING (0x02)
     unsigned bufsiz;
     unsigned char *bufptr;
     unsigned char bufdata[_DEFAULT_BUFSIZ];
@@ -117,5 +111,6 @@ struct vfs *__getvfsforfile(char *fullname, const char *orig_name, char *full_pa
 /* file locking */
 int __lockio(int h) _IMPL("libsys/fmt.c");
 int __unlockio(int h) _IMPL("libsys/fmt.c");
+
 
 #endif

@@ -95,6 +95,7 @@ static vfs_file_t __filetab[_MAX_FILES] = {
     },
 };
 
+/* get vfs file handle corresponding to file i */
 vfs_file_t *
 __getftab(int i)
 {
@@ -103,6 +104,7 @@ __getftab(int i)
     }
     return &__filetab[i];
 }
+
 
 int
 _openraw(void *fil_ptr, const char *orig_name, int flags, mode_t mode)
@@ -124,7 +126,7 @@ _openraw(void *fil_ptr, const char *orig_name, int flags, mode_t mode)
 #ifdef _DEBUG
     {
         unsigned *ptr = (unsigned *)v->open;
-        __builtin_printf("_openraw: calling %x : %x\n", ptr[0], ptr[1]);
+        __builtin_printf("_openraw: calling %x (%x : %x)\n", (unsigned)ptr, ptr[0], ptr[1]);
     }
 #endif        
     r = (*v->open)(fil, name, flags);
@@ -149,7 +151,7 @@ _openraw(void *fil_ptr, const char *orig_name, int flags, mode_t mode)
             state |= (_VFS_STATE_APPEND|_VFS_STATE_NEEDSEEK);
         }
 #ifdef _DEBUG
-        __builtin_printf("openraw rdwr=%d state=%d\n", rdwr, state);
+        __builtin_printf("openraw rdwr=%d state=0x%x\n", rdwr, state);
 #endif    
         fil->state = state;
 
@@ -158,6 +160,8 @@ _openraw(void *fil_ptr, const char *orig_name, int flags, mode_t mode)
         if (!fil->close) fil->close = v->close;
         if (!fil->ioctl) fil->ioctl = v->ioctl;
         if (!fil->lseek) fil->lseek = v->lseek;
+        if (!fil->getcf) fil->getcf = v->getcf;
+        if (!fil->putcf) fil->putcf = v->putcf;
         if (!fil->putcf) {
             // check for TTY
             defaultBuffering = 1;
@@ -211,6 +215,9 @@ int _closeraw(void *f_ptr)
     if (!f->state) {
         return _seterror(EBADF);
     }
+#ifdef _DEBUG
+    __builtin_printf("$$$ _closeraw(%x)\n", (unsigned)f_ptr);
+#endif    
     if (f->flush) {
         (*f->flush)(f);
     }
@@ -219,16 +226,6 @@ int _closeraw(void *f_ptr)
     }
     memset(f, 0, sizeof(*f));
     return r;
-}
-
-int _freefile()
-{
-    vfs_file_t *tab = &__filetab[0];
-    int fd;
-    for (fd = 0; fd < _MAX_FILES; fd++) {
-        if (tab[fd].state == 0) return fd;
-    }
-    return -1;
 }
 
 int _find_free_file()
@@ -244,6 +241,23 @@ int _find_free_file()
     }
     return fd;
 }
+
+/* get a new vfs file handle */
+/* only used internally, and prefers bigger handles
+   so as not to conflict with BASIC hardcoded integers
+*/
+
+vfs_file_t *
+_get_vfs_file_handle()
+{
+    int fd;
+    for (fd = _MAX_FILES-1; fd >= 0; --fd) {
+        if (__filetab[fd].state == 0) break;
+    }
+    if (fd < 0) return 0;
+    return &__filetab[fd];
+}
+
 
 int open(const char *orig_name, int flags, mode_t mode=0644)
 {
@@ -268,6 +282,9 @@ int creat(const char *name, mode_t mode)
 int close(int fd)
 {
     vfs_file_t *f;
+#ifdef _DEBUG
+    __builtin_printf("close(%d)\n", fd);
+#endif    
     if ((unsigned)fd >= (unsigned)_MAX_FILES) {
         return _seterror(EBADF);
     }
@@ -285,7 +302,7 @@ ssize_t _vfswrite(vfs_file_t *f, const void *vbuf, size_t count)
     }
     if (f->state & _VFS_STATE_APPEND) {
         if (f->state & _VFS_STATE_NEEDSEEK) {
-            r = (*f->lseek)(f, 0L, SEEK_END);
+            r = (*f->lseek)(f, (off_t)0, SEEK_END);
             f->state &= ~_VFS_STATE_NEEDSEEK;
         }
     }
@@ -329,7 +346,7 @@ ssize_t _vfsread(vfs_file_t *f, void *vbuf, size_t count)
     
     if (! (f->state & _VFS_STATE_RDOK) ) {
 #ifdef _DEBUG
-        __builtin_printf("not OK to read\n");
+        __builtin_printf("file %x not OK to read: state=0x%x\n", (unsigned)f, f->state);
 #endif        
         return _seterror(EACCES);
     }
@@ -389,11 +406,11 @@ off_t lseek(int fd, off_t offset, int whence)
     off_t r;
     
     if ((unsigned)fd >= (unsigned)_MAX_FILES) {
-        return _seterror(EBADF);
+        return (off_t)_seterror(EBADF);
     }
     f = &__filetab[fd];
     if (!f->lseek) {
-        return _seterror(ENOSYS);
+        return (off_t)_seterror(ENOSYS);
     }
     if (f->state & _VFS_STATE_APPEND) {
         // if we want to write again, make sure to seek to end of file
@@ -401,7 +418,7 @@ off_t lseek(int fd, off_t offset, int whence)
     }
     r = (*f->lseek)(f, offset, whence);
     if (r < 0) {
-        return _seterror(-r);
+        return (off_t)_seterror(-(int)r);
     }
     return r;
 }

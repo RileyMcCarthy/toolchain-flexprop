@@ -6,6 +6,12 @@
  * below; see also ff.c and similar files.
  */
 
+#ifndef _NO_STDIO_BUF
+#define _STDIO_BUF
+#else
+#define FF_USE_STRFUNC (1)
+#endif
+
 #define DIR FFDIR
 #define get_fattime _get_fattime
 #define static
@@ -61,7 +67,9 @@ static time_t unixtime(unsigned int dosdate, unsigned int dostime)
 }
 
 typedef struct fat_file {
+#ifdef _STDIO_BUF    
     struct _default_buffer b;
+#endif    
     FIL fil;
 } FAT_FIL;
 
@@ -215,13 +223,16 @@ int v_stat(const char *name, struct stat *buf)
 {
     int r;
     FILINFO finfo;
+    VOLINFO vinfo;
     unsigned mode;
+    unsigned clustersize = 512; /* default; this is bogus but should be overridden */
 #ifdef _DEBUG_FATFS
     __builtin_printf("v_stat(%s)\n", name);
 #endif
     memset(buf, 0, sizeof(*buf));
     if (name[0] == 0 || (name[0] == '.' && name[1] == 0)) {
         /* root directory */
+        memset(&finfo, 0, sizeof(finfo));
         finfo.fattrib = AM_DIR;
         r = 0;
     } else {
@@ -229,6 +240,12 @@ int v_stat(const char *name, struct stat *buf)
     }
     if (r != 0) {
         return _set_dos_error(r);
+    }
+    if (f_getvolinfo(name, &vinfo) == FR_OK) {
+#ifdef _DEBUG_FATFS
+        __builtin_printf("f_getvolinfo: ssize=%u csize=%u\n", vinfo.ssize, vinfo.csize);
+#endif        
+        clustersize = vinfo.csize * vinfo.ssize;
     }
     mode = S_IRUSR | S_IRGRP | S_IROTH;
     if (!(finfo.fattrib & AM_RDO)) {
@@ -240,8 +257,8 @@ int v_stat(const char *name, struct stat *buf)
     buf->st_mode = mode;
     buf->st_nlink = 1;
     buf->st_size = finfo.fsize;
-    buf->st_blksize = 512;
-    buf->st_blocks = (buf->st_size + 511) / 512;
+    buf->st_blksize = clustersize;
+    buf->st_blocks = (finfo.fsize + clustersize - 1) / clustersize;
     buf->st_atime = buf->st_mtime = buf->st_ctime = unixtime(finfo.fdate, finfo.ftime);
 #ifdef _DEBUG_FATFS
     __builtin_printf("v_stat returning %d mode=0x%x\n", r, buf->st_mode);
@@ -299,11 +316,12 @@ ssize_t v_write(vfs_file_t *fil, void *buf, size_t siz)
     return x;
 #endif
 }
-off_t v_lseek(vfs_file_t *fil, off_t offset, int whence)
+off_t v_lseek(vfs_file_t *fil, off_t lloffset, int whence)
 {
     FAT_FIL *vf = fil->vfsdata;
     FIL *f = &vf->fil;
     int result;
+    long offset = (long)lloffset;
     
     if (!f) {
         return _seterror(EBADF);
@@ -325,7 +343,7 @@ off_t v_lseek(vfs_file_t *fil, off_t offset, int whence)
     if (result) {
         return _set_dos_error(result);
     }
-    return offset;
+    return (off_t)offset;
 }
 
 int v_ioctl(vfs_file_t *fil, unsigned long req, void *argp)
@@ -421,6 +439,9 @@ int v_open(vfs_file_t *fil, const char *name, int flags)
 }
 
 int v_flush(vfs_file_t *fil) {
+#ifdef _STDIO_BUF    
+    __default_flush(fil);  /* flush fputc/fgetc buffers */
+#endif    
 #if FF_FS_READONLY
     return 0;
 #else
@@ -463,6 +484,23 @@ int v_deinit(const char *mountname)
     return 0;
 }
 
+#ifndef _STDIO_BUF
+int v_putcf(int c, vfs_file_t *fil)
+{
+    FAT_FIL *f = fil->vfsdata;
+    int r = f_putc(c, &f->fil);
+    return r;
+}
+
+int v_getcf(vfs_file_t *fil)
+{
+    char c;
+    int r = v_read(fil, &c, 1);
+    if (r < 0) return -1;
+    return r;
+}
+#endif
+
 struct vfs *
 get_vfs(void *ptr)
 {
@@ -492,6 +530,13 @@ get_vfs(void *ptr)
 
     v->init = &v_init;
     v->deinit = &v_deinit;
-    
+
+#ifdef _STDIO_BUF
+    v->getcf = 0;
+    v->putcf = 0;
+#else    
+    v->getcf = &v_getcf;
+    v->putcf = &v_putcf;
+#endif    
     return v;
 }

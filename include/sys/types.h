@@ -8,7 +8,8 @@
 #include <time.h> /* for time_t */
 
 #ifndef __OFF_T_DEFINED__
-typedef long off_t;
+typedef long long off_t;  // what we eventually want
+//typedef long off_t;
 #define __OFF_T_DEFINED__
 #endif
 #ifndef __SSIZE_T_DEFINED__
@@ -33,9 +34,9 @@ struct stat {
   uid_t st_uid;
   gid_t st_gid;
   int st_rdev;
-  long st_size;
-  long st_blksize;
-  long st_blocks;
+  off_t st_size;
+  unsigned st_blksize;
+  unsigned st_blocks;
   time_t st_atime;
   time_t st_mtime;
   time_t st_ctime;
@@ -73,13 +74,18 @@ struct s_vfs_file_t {
 typedef int (*putcfunc_t)(int c, vfs_file_t *fil);
 typedef int (*getcfunc_t)(vfs_file_t *fil);
 
-#define _VFS_STATE_RDOK (0x01)
-#define _VFS_STATE_WROK (0x02)
-#define _VFS_STATE_INUSE (0x04)
-#define _VFS_STATE_EOF (0x10)
-#define _VFS_STATE_ERR (0x20)
-#define _VFS_STATE_APPEND (0x40)
-#define _VFS_STATE_NEEDSEEK (0x80)
-#define _VFS_STATE_ISATTY (0x100)
+#define _VFS_STATE_RDOK    (0x01)
+#define _VFS_STATE_WROK    (0x02)
+#define _BUF_FLAGS_READING (0x04)
+#define _BUF_FLAGS_WRITING (0x08)
+#define _VFS_STATE_EOF     (0x10)
+#define _VFS_STATE_ERR     (0x20)
+#define _VFS_STATE_ISATTY  (0x40)
+#define _VFS_STATE_APPEND  (0x80)
+#define _VFS_STATE_NEEDSEEK (0x0100)
+#define _VFS_STATE_INUSE    (0x8000)
+
+/* fetch a new vfs_file_t handle */
+vfs_file_t *_get_vfs_file_handle() __fromfile("libc/unix/posixio.c");
 
 #endif
