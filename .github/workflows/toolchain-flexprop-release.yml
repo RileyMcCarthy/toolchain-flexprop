@@ -49,13 +49,13 @@ jobs:
           cp build-${{ matrix.os }}/spin2cpp* ./tools/spin2cpp
       # Uploading build files
       - name: Archive results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tools-${{ matrix.os }}
           path: "tools/"
      # Uploading include folder
       - name: Archive include files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: include
           path: 'include/'
@@ -84,7 +84,7 @@ jobs:
           cp build/spin2cpp tools/
       # Uploading build files
       - name: Archive results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tools-${{ runner.os }}
           path: 'tools/'
@@ -99,7 +99,7 @@ jobs:
     - name: Create artifact dir
       run: mkdir -p ./artifacts
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: ./artifacts
     - name: Update platformio package.json
