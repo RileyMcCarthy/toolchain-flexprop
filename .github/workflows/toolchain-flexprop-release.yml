@@ -10,7 +10,22 @@ on:
         default: ''
 jobs:
   
+  upload-include:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: totalspectrum/spin2cpp
+          ref: v${{ github.event.inputs.version }}
+          submodules: recursive
+      - name: Archive include files
+        uses: actions/upload-artifact@v4
+        with:
+          name: include
+          path: 'include/'
+
   build-win-rpi:
+    needs: upload-include
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -46,14 +61,9 @@ jobs:
         with:
           name: build-win-rpi-tools-${{ matrix.os }}
           path: "tools/"
-     # Uploading include folder
-      - name: Archive include files
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-win-rpi-include
-          path: 'include/'
   
   build-linux-macos:
+    needs: upload-include
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -123,7 +133,7 @@ jobs:
       run: |
         mkdir -p 'bin'
         rm -R -f include
-        cp -R artifacts/build-win-rpi-include ./
+        cp -R artifacts/include ./
         cp artifacts/build-linux-macos-tools-Linux/flexcc ./bin/flexcc
         cp artifacts/build-linux-macos-tools-Linux/flexspin ./bin/flexspin
         cp artifacts/build-linux-macos-tools-Linux/spin2cpp ./bin/spin2cpp
