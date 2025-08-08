@@ -76,8 +76,34 @@ jobs:
           ref: v${{ github.event.inputs.version }}
           submodules: recursive
       # make spin2cpp
-      - name: Make targets
+      - name: Make targets (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: make
+      # make universal binaries for macOS
+      - name: Make targets (macOS Universal)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # Build for x86_64
+          make clean
+          make CFLAGS="-arch x86_64" LDFLAGS="-arch x86_64"
+          mkdir -p build-x86_64
+          cp build/flexcc build-x86_64/
+          cp build/flexspin build-x86_64/
+          cp build/spin2cpp build-x86_64/
+          
+          # Build for arm64
+          make clean
+          make CFLAGS="-arch arm64" LDFLAGS="-arch arm64"
+          mkdir -p build-arm64
+          cp build/flexcc build-arm64/
+          cp build/flexspin build-arm64/
+          cp build/spin2cpp build-arm64/
+          
+          # Create universal binaries
+          mkdir -p build
+          lipo -create build-x86_64/flexcc build-arm64/flexcc -output build/flexcc
+          lipo -create build-x86_64/flexspin build-arm64/flexspin -output build/flexspin
+          lipo -create build-x86_64/spin2cpp build-arm64/spin2cpp -output build/spin2cpp
       # Rename tools
       - name: Move Tools
         run: |
