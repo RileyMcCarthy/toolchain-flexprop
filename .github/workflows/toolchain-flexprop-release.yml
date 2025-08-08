@@ -57,9 +57,15 @@ jobs:
       - name: Move Files
         run: |
           mkdir ./tools
-          cp build-${{ matrix.os }}/flexcc* ./tools/flexcc
-          cp build-${{ matrix.os }}/flexspin* ./tools/flexspin
-          cp build-${{ matrix.os }}/spin2cpp* ./tools/spin2cpp
+          # Handle different build directory mappings based on upstream Makefile
+          if [[ "${{ matrix.os }}" == "linux64" ]]; then
+            BUILD_DIR="build"
+          else
+            BUILD_DIR="build-${{ matrix.os }}"
+          fi
+          cp ${BUILD_DIR}/flexcc* ./tools/flexcc
+          cp ${BUILD_DIR}/flexspin* ./tools/flexspin
+          cp ${BUILD_DIR}/spin2cpp* ./tools/spin2cpp
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v4
