@@ -52,25 +52,14 @@ jobs:
           submodules: recursive
       # make spin2cpp
       - name: Make targets
-        run: |
-          if [ "${{ matrix.os }}" = "linux64" ]; then
-            make
-          else
-            make CROSS=${{ matrix.os }}
-          fi
+        run: make CROSS=${{ matrix.os }}
       # Moves files
       - name: Move Files
         run: |
           mkdir ./tools
-          if [ "${{ matrix.os }}" = "linux64" ]; then
-            cp build/flexcc ./tools/flexcc
-            cp build/flexspin ./tools/flexspin
-            cp build/spin2cpp ./tools/spin2cpp
-          else
-            cp build-${{ matrix.os }}/flexcc* ./tools/flexcc
-            cp build-${{ matrix.os }}/flexspin* ./tools/flexspin
-            cp build-${{ matrix.os }}/spin2cpp* ./tools/spin2cpp
-          fi
+          cp build-${{ matrix.os }}/flexcc* ./tools/flexcc
+          cp build-${{ matrix.os }}/flexspin* ./tools/flexspin
+          cp build-${{ matrix.os }}/spin2cpp* ./tools/spin2cpp
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v4
