@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [win32,rpi,macosx]
+        os: [win32,rpi,macosx,linux64]
     steps:
       - name: Upgrade packages
         run: sudo apt-get update
@@ -52,50 +52,34 @@ jobs:
           submodules: recursive
       # make spin2cpp
       - name: Make targets
-        run: make CROSS=${{ matrix.os }}
+        run: |
+          if [ "${{ matrix.os }}" = "linux64" ]; then
+            make
+          else
+            make CROSS=${{ matrix.os }}
+          fi
       # Moves files
       - name: Move Files
         run: |
           mkdir ./tools
-          cp build-${{ matrix.os }}/flexcc* ./tools/flexcc
-          cp build-${{ matrix.os }}/flexspin* ./tools/flexspin
-          cp build-${{ matrix.os }}/spin2cpp* ./tools/spin2cpp
+          if [ "${{ matrix.os }}" = "linux64" ]; then
+            cp build/flexcc ./tools/flexcc
+            cp build/flexspin ./tools/flexspin
+            cp build/spin2cpp ./tools/spin2cpp
+          else
+            cp build-${{ matrix.os }}/flexcc* ./tools/flexcc
+            cp build-${{ matrix.os }}/flexspin* ./tools/flexspin
+            cp build-${{ matrix.os }}/spin2cpp* ./tools/spin2cpp
+          fi
       # Uploading build files
       - name: Archive results
         uses: actions/upload-artifact@v4
         with:
           name: build-cross-platform-tools-${{ matrix.os }}
           path: "tools/"
-  
-  build-linux:
-    needs: upload-include
-    runs-on: ubuntu-latest
-    steps:
-        # Checkout spin2cpp repo and setup environment
-      - uses: actions/checkout@v4
-        with:
-          repository: totalspectrum/spin2cpp
-          ref: v${{ github.event.inputs.version }}
-          submodules: recursive
-      # make spin2cpp
-      - name: Make targets
-        run: make
-      # Rename tools
-      - name: Move Tools
-        run: |
-          mkdir ./tools
-          cp build/flexcc tools/
-          cp build/flexspin tools/
-          cp build/spin2cpp tools/
-      # Uploading build files
-      - name: Archive results
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-linux-tools
-          path: 'tools/'
 
   create-release:
-    needs: [build-cross-platform, build-linux]
+    needs: [build-cross-platform]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -136,9 +120,9 @@ jobs:
         mkdir -p 'bin'
         rm -R -f include
         cp -R artifacts/include ./
-        cp artifacts/build-linux-tools/flexcc ./bin/flexcc
-        cp artifacts/build-linux-tools/flexspin ./bin/flexspin
-        cp artifacts/build-linux-tools/spin2cpp ./bin/spin2cpp
+        cp artifacts/build-cross-platform-tools-linux64/flexcc ./bin/flexcc
+        cp artifacts/build-cross-platform-tools-linux64/flexspin ./bin/flexspin
+        cp artifacts/build-cross-platform-tools-linux64/spin2cpp ./bin/spin2cpp
         cp artifacts/build-cross-platform-tools-macosx/flexcc ./bin/flexcc.mac
         cp artifacts/build-cross-platform-tools-macosx/flexspin ./bin/flexspin.mac
         cp artifacts/build-cross-platform-tools-macosx/spin2cpp ./bin/spin2cpp.mac
