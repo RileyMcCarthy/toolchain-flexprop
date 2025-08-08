@@ -24,12 +24,12 @@ jobs:
           name: include
           path: 'include/'
 
-  build-win-rpi:
+  build-cross-platform:
     needs: upload-include
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [win32,rpi]
+        os: [win32,rpi,macosx]
     steps:
       - name: Upgrade packages
         run: sudo apt-get update
@@ -39,6 +39,11 @@ jobs:
       - name: Install arm GCC
         if: matrix.os == 'rpi'
         run: "sudo apt install gcc-arm-linux-gnueabihf"
+      - name: Setup osxcross for macOS
+        if: matrix.os == 'macosx'
+        uses: mbround18/setup-osxcross@v1
+        with:
+          osx-version: "12.3"
       # Checkout spin2cpp repo and setup environment
       - uses: actions/checkout@v4
         with:
@@ -59,15 +64,12 @@ jobs:
       - name: Archive results
         uses: actions/upload-artifact@v4
         with:
-          name: build-win-rpi-tools-${{ matrix.os }}
+          name: build-cross-platform-tools-${{ matrix.os }}
           path: "tools/"
   
-  build-linux-macos:
+  build-linux:
     needs: upload-include
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest,macos-latest]
+    runs-on: ubuntu-latest
     steps:
         # Checkout spin2cpp repo and setup environment
       - uses: actions/checkout@v4
@@ -76,34 +78,8 @@ jobs:
           ref: v${{ github.event.inputs.version }}
           submodules: recursive
       # make spin2cpp
-      - name: Make targets (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Make targets
         run: make
-      # make universal binaries for macOS
-      - name: Make targets (macOS Universal)
-        if: matrix.os == 'macos-latest'
-        run: |
-          # Build for x86_64
-          make clean
-          make CFLAGS="-arch x86_64" LDFLAGS="-arch x86_64"
-          mkdir -p build-x86_64
-          cp build/flexcc build-x86_64/
-          cp build/flexspin build-x86_64/
-          cp build/spin2cpp build-x86_64/
-          
-          # Build for arm64
-          make clean
-          make CFLAGS="-arch arm64" LDFLAGS="-arch arm64"
-          mkdir -p build-arm64
-          cp build/flexcc build-arm64/
-          cp build/flexspin build-arm64/
-          cp build/spin2cpp build-arm64/
-          
-          # Create universal binaries
-          mkdir -p build
-          lipo -create build-x86_64/flexcc build-arm64/flexcc -output build/flexcc
-          lipo -create build-x86_64/flexspin build-arm64/flexspin -output build/flexspin
-          lipo -create build-x86_64/spin2cpp build-arm64/spin2cpp -output build/spin2cpp
       # Rename tools
       - name: Move Tools
         run: |
@@ -115,11 +91,11 @@ jobs:
       - name: Archive results
         uses: actions/upload-artifact@v4
         with:
-          name: build-linux-macos-tools-${{ runner.os }}
+          name: build-linux-tools
           path: 'tools/'
 
   create-release:
-    needs: [build-win-rpi, build-linux-macos]
+    needs: [build-cross-platform, build-linux]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -160,18 +136,18 @@ jobs:
         mkdir -p 'bin'
         rm -R -f include
         cp -R artifacts/include ./
-        cp artifacts/build-linux-macos-tools-Linux/flexcc ./bin/flexcc
-        cp artifacts/build-linux-macos-tools-Linux/flexspin ./bin/flexspin
-        cp artifacts/build-linux-macos-tools-Linux/spin2cpp ./bin/spin2cpp
-        cp artifacts/build-linux-macos-tools-macOS/flexcc ./bin/flexcc.mac
-        cp artifacts/build-linux-macos-tools-macOS/flexspin ./bin/flexspin.mac
-        cp artifacts/build-linux-macos-tools-macOS/spin2cpp ./bin/spin2cpp.mac
-        cp artifacts/build-win-rpi-tools-rpi/flexcc ./bin/flexcc.rpi
-        cp artifacts/build-win-rpi-tools-rpi/flexspin ./bin/flexspin.rpi
-        cp artifacts/build-win-rpi-tools-rpi/spin2cpp ./bin/spin2cpp.rpi
-        cp artifacts/build-win-rpi-tools-win32/flexcc ./bin/flexcc.exe
-        cp artifacts/build-win-rpi-tools-win32/flexspin ./bin/flexspin.exe
-        cp artifacts/build-win-rpi-tools-win32/spin2cpp ./bin/spin2cpp.exe
+        cp artifacts/build-linux-tools/flexcc ./bin/flexcc
+        cp artifacts/build-linux-tools/flexspin ./bin/flexspin
+        cp artifacts/build-linux-tools/spin2cpp ./bin/spin2cpp
+        cp artifacts/build-cross-platform-tools-macosx/flexcc ./bin/flexcc.mac
+        cp artifacts/build-cross-platform-tools-macosx/flexspin ./bin/flexspin.mac
+        cp artifacts/build-cross-platform-tools-macosx/spin2cpp ./bin/spin2cpp.mac
+        cp artifacts/build-cross-platform-tools-rpi/flexcc ./bin/flexcc.rpi
+        cp artifacts/build-cross-platform-tools-rpi/flexspin ./bin/flexspin.rpi
+        cp artifacts/build-cross-platform-tools-rpi/spin2cpp ./bin/spin2cpp.rpi
+        cp artifacts/build-cross-platform-tools-win32/flexcc ./bin/flexcc.exe
+        cp artifacts/build-cross-platform-tools-win32/flexspin ./bin/flexspin.exe
+        cp artifacts/build-cross-platform-tools-win32/spin2cpp ./bin/spin2cpp.exe
         rm -R artifacts
     
     - name: Change permissions
