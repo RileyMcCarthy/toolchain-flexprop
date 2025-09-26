@@ -8,6 +8,10 @@ on:
         description: 'Version to release (e.g., 1.0.0)'     
         required: true
         default: ''
+      repository:
+        description: 'Repository to build from (e.g., totalspectrum/spin2cpp or RileyMcCarthy/spin2cpp)'
+        required: false
+        default: 'totalspectrum/spin2cpp'
 jobs:
   
   upload-include:
@@ -15,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: totalspectrum/spin2cpp
+          repository: ${{ github.event.inputs.repository }}
           ref: v${{ github.event.inputs.version }}
           submodules: recursive
       - name: Archive include files
@@ -47,7 +51,7 @@ jobs:
       # Checkout spin2cpp repo and setup environment
       - uses: actions/checkout@v4
         with:
-          repository: totalspectrum/spin2cpp
+          repository: ${{ github.event.inputs.repository }}
           ref: v${{ github.event.inputs.version }}
           submodules: recursive
       # make spin2cpp
@@ -104,7 +108,7 @@ jobs:
             "parallax",
             "propeller"
           ],
-          "homepage": "https://github.com/totalspectrum/spin2cpp",
+          "homepage": "https://github.com/${{ github.event.inputs.repository }}",
           "license": "GPL-2.0-or-later"
         }
         ' > 'package.json'
