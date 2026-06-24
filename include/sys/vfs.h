@@ -54,10 +54,11 @@ struct vfs *_vfs_open_host(void) _IMPL("filesys/fs9p/fs9p_vfs.c");
 
 struct vfs *_vfs_open_fat_handle(vfs_file_t *handle) _IMPL("filesys/fatfs/fatfs_vfs.c");
 struct vfs *_vfs_open_fat_file(const char *name) _IMPL("filesys/fatfs/fatfs_vfs.c");
+vfs_file_t *_sdmm_open(int pclk, int pss, int pdi, int pdo) _IMPL("filesys/block/sdmm_vfs.c");
 
 /* legacy calls */
-struct vfs *_vfs_open_sdcard(void) _IMPL("filesys/fatfs/fatfs_vfs.c");
-struct vfs *_vfs_open_sdcardx(int pclk = 61, int pss = 60, int pdi = 59, int pdo = 58) _IMPL("filesys/fatfs/fatfs_vfs.c");
+struct vfs *_vfs_open_sdcard(void) _IMPL("filesys/block/sdmm_vfs.c");
+struct vfs *_vfs_open_sdcardx(int pclk = 61, int pss = 60, int pdi = 59, int pdo = 58) _IMPL("filesys/block/sdmm_vfs.c");
 
 /* parallax file system */
 struct vfs *_vfs_open_parallaxfs(void) _IMPL("filesys/parallax/parallaxfs_vfs.c");

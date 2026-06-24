@@ -1,6 +1,6 @@
  {
   "name": "toolchain-flexprop",
-  "version": "v7.4.5",
+  "version": "v7.6.11",
   "description": "FlexProp toolchain for parallax devices",
   "keywords": [
     "toolchain",
@@ -13,6 +13,6 @@
     "parallax",
     "propeller"
   ],
-  "homepage": "https://github.com/RileyMcCarthy/spin2cpp",
+  "homepage": "https://github.com/totalspectrum/spin2cpp",
   "license": "GPL-2.0-or-later"
 } 
